@@ -1,0 +1,12 @@
+.idea/
+.DS_Store
+.gradle
+build
+out
+*.iml
+*.iws
+log/
+target/
+.env
+Jenkinsfile-app
+out/
