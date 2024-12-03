@@ -1,6 +1,8 @@
 # DLSync
 
-<img src="https://github.com/user-attachments/assets/51476878-5fde-4094-8565-3753b3051b4c" height="400" title="logo" alt="logo">
+<img src="https://github.com/user-attachments/assets/95be0264-04a0-4dc3-8951-93374609ec3c" height="300" title="logo" alt="logo">
+
+---
 
 DLSync is a database change management that deploys database changes to our database. 
 Each object(view, table, udf ...) in our database will 
