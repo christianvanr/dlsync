@@ -1,4 +1,7 @@
 # DLSync
+
+<img src="https://github.com/user-attachments/assets/51476878-5fde-4094-8565-3753b3051b4c" title="logo" alt="logo">
+
 DLSync is a database change management that deploys database changes to our database. 
 Each object(view, table, udf ...) in our database will 
 have a corresponding SQL script file where every change to this object is tracked in this file only. DLSync keeps track of what changes have been deployed to database 
