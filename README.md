@@ -1,12 +1,12 @@
-# DLsync
-DLsync is a database change management that deploys database changes to our database. 
+# DLSync
+DLSync is a database change management that deploys database changes to our database. 
 Each object(view, table, udf ...) in our database will 
-have a corresponding SQL script file where every change to this object is tracked in this file only. DLsync keeps track of what changes have been deployed to database 
-by using hash. Hence DLsync is smart enough to identify what scripts have changed.
-Using this DLsync only deploys changed script to database objects.
-DLsync also understands interdependency between different scripts, thus applies these changes
+have a corresponding SQL script file where every change to this object is tracked in this file only. DLSync keeps track of what changes have been deployed to database 
+by using hash. Hence DLSync is smart enough to identify what scripts have changed.git 
+Using this DLSync only deploys changed script to database objects.
+DLSync also understands interdependency between different scripts, thus applies these changes
 according their dependency.
-Based on how we define the changes to database objects, DLsync divides database object scripts to 2 types, State and migration scripts.
+Based on how we define the changes to database objects, DLSync divides database object scripts to 2 types, State and migration scripts.
 ### 1. State Script
 This type of script is used for object of Views, UDF, Stored Procedure. 
 In this type of script we can update the current existing code and these changes will be reflected in our database by DLsyc by replacing the existing object with the new code of the script provided.
@@ -32,34 +32,37 @@ The migration code are applied to the database object sequentially by the versio
 To use this tool first create your script root directory.
 This directory will contain all scripts and configurations.
 Inside this directory create a directory structure like:
-- database_name
-    - schema_name_1
-        - [object_type]_1
-          - object_name_1.sql
-          - object_name_2.sql
-        - [object_type]_2
-          - object_name_3.sql
-          - object_name_4.sql
-    - schema_name_2
-      - [object_type]_1
-          - object_name_5.sql
-          - object_name_6.sql
-      - [object_type]_2
-          - object_name_7.sql
-          - object_name_8.sql
-
-[//]: # (- Dockerfile)
-- parameter-[profile-1].properties
-- parameter-[profile-2].properties
-- parameter-[profile-3].properties
+```
+/script-root                                        # Root directory for the scripts
+├── /main                                           # Main scripts for deployment 
+│   ├── /database_name_1                            # Database name 
+│   │   ├── /schema_name_1                          # database Schema name
+│   │   │   ├── /[object_type]_1                    # Database Object type like (VIEWS, FUNCTIONS, TABLES ...)
+│   │   │   │   ├── object_name_1.sql               # The database object name(table name, view name, function name ...)
+│   │   │   │   ├── object_name_2.sql               # The database object name(table name, view name, function name ...)
+│   │   │   ├── /[object_type]_2                    # Database Object type like (VIEWS, FUNCTIONS, TABLES ...)
+│   │   │   │   ├── object_name_3.sql               # The database object name(table name, view name, function name ...)
+│   │   │   │   ├── object_name_4.sql               # The database object name(table name, view name, function name ...)
+│   │   ├── /schema_name_2                          # database Schema name
+│   │   │   ├── /[object_type]_1                    # Database Object type like (VIEWS, FUNCTIONS, TABLES ...)
+│   │   │   │   ├── object_name_5.sql               # The database object name(table name, view name, function name ...)
+│   │   │   │   ├── object_name_6.sql               # The database object name(table name, view name, function name ...)
+│   │   │   ├── /[object_type]_2                    # Database Object type like (VIEWS, FUNCTIONS, TABLES ...)
+│   │   │   │   ├── object_name_7.sql               # The database object name(table name, view name, function name ...)
+│   │   │   │   ├── object_name_8.sql               # The database object name(table name, view name, function name ...)
+├── /tests                                          # SQL unit test scripts
+├── config.yml                                      # configuration file
+├── parameter-[profile-1].properties                # parameter property file  
+├── parameter-[profile-2].properties                # parameter property file
+└── parameter-[profile-3].properties                # parameter property file
+```
 
 Where 
-- **database_name:** is the database name of your project, 
+- **database_name_*:** is the database name of your project, 
 - **schema_name_*:** are schemas inside the database, 
 - **object_type:** is type of the object only 1 of the following (VIEWS, FUNCTIONS, PROCEDURES, TABLES, SEQUENCES, STAGES, STREAMS, TASKS)
-- **object_name_*:**.sql are individual database object scripts.
-
-[//]: # (- **Dockerfile** is dockerfile that creates an image with dlsync and your scripts.)
+- **object_name_*.sql:** are individual database object scripts.
+- **config.yml:** is a configuration file used to configure DLSync behavior.
 - **parameter-[profile-*].properties:** is parameter to value map file. This is going to be used by corresponding individual instances of your database.
 This property files will help you parametrize changing parameters and their value. For each deployment instance of your database(project) you should create a separate parameter profile property.
 These property files should have names in the above format by replacing "format" by your deployment instance name.
@@ -113,9 +116,9 @@ For example,
 ```
 create or replace view ${database}.${schema}.my_view as select * from ${db}.${schema}.my_table;
 ```
-This script file is using two parameters, database and schema. Thus their value should be specified in the parameter-[profile].property file. 
+This script file is using two parameters, database and schema. Thus, their value should be specified in the parameter-[profile].property file. 
 #### parameter-[profile].property file 
-This file should contain the parameter used by the scripts. This is a property file where you define parameter and their values.
+This file should contain the parameter used by the scripts. This is a property file where you define parameter and their values corresponding to an instance.
 For example,
 ```
 database=my_database_dev
@@ -126,7 +129,7 @@ other_param=other_value
 This tool requires the following environment variables in order to run:
 ```
 profile=dev;    #To specifiy which parameter property file should use. (for this case There should be a file called parameter-dev.property)
-script_root=path/to/db_scripts  #This should point to the db scripts directory
+script_root=path/to/db_scripts  #This should point to the scripts root directory directory
 account=my_account  #account used for connection
 db=database  #your database
 schema=dl_sync  #your dl_sync schema. It will use this schema to store neccessary objects for this tool
@@ -140,7 +143,7 @@ There are 4 main modules. Each module of the tool can be triggered from the comm
 ```
 dlsync DEPLOY
 ```
-#### Running Deploy without deploying object. (Used to mark scripts deployed prior this tool as deployed, so that dlsync won't replace existing database objects.)
+#### Running Deploy without deploying object. (Used to mark scripts deployed prior this tool as deployed, so that DLSync won't replace existing database objects.)
 ```
 dlsync DEPLOY --only-hashes
 ```
@@ -162,6 +165,3 @@ dlsync CREATE_LINEAGE
 ```
 
 There is an example scripts provided in the directory ```example_scripts``` .
-
-### Backlog
-- provide Override for syntax errors in rollback/verify scripts
