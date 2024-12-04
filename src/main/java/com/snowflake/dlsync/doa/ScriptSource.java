@@ -19,15 +19,23 @@ import java.util.stream.Collectors;
 @Slf4j
 public class ScriptSource {
     private String scriptRoot;
+    private String mainScriptDir;
+    private String testScriptDir;
 
     public ScriptSource(String scriptRoot) {
         this.scriptRoot = scriptRoot;
+        mainScriptDir = Path.of(scriptRoot, "main").toString();
+        File mainDirectory = new File(mainScriptDir);
+        if(!mainDirectory.exists()) {
+            mainScriptDir = scriptRoot;
+        }
+        testScriptDir = Path.of(scriptRoot, "tests").toString();
         log.debug("Script file reader initialized with scriptRoot: {}", scriptRoot);
     }
 
     private List<String> readDatabase() {
         List<String> dbs = new ArrayList<>();
-        File dbFiles = new File(scriptRoot);
+        File dbFiles = new File(mainScriptDir);
         if(dbFiles.exists()) {
             File[] allDbs = dbFiles.listFiles();
             for(File file: allDbs) {
@@ -46,7 +54,7 @@ public class ScriptSource {
     private List<String> readSchemas(String database) {
         log.info("Reading all schema from database {}", database);
         List<String> schemas = new ArrayList<>();
-        File dbFile = Path.of(scriptRoot, database).toFile();
+        File dbFile = Path.of(mainScriptDir, database).toFile();
         if(dbFile.exists()) {
             File[] allFiles = dbFile.listFiles();
             for(File file: allFiles) {
@@ -71,7 +79,7 @@ public class ScriptSource {
     public List<Script> getScriptsInSchema(String database, String schema) throws IOException {
         log.info("Reading script files from schema: {}", schema);
         List<Script> scripts = new ArrayList<>();
-        File schemaDirectory = Path.of(scriptRoot, database, schema).toFile();
+        File schemaDirectory = Path.of(mainScriptDir, database, schema).toFile();
         File[] scriptTypeDirectories = schemaDirectory.listFiles();
 
         for(File scriptType: scriptTypeDirectories) {
@@ -128,7 +136,7 @@ public class ScriptSource {
 
 
     public Script getScriptByName(String database, String schema, ScriptObjectType type, String objectName) throws IOException {
-        File file = Path.of(scriptRoot, database, schema, type.toString(), objectName + ".SQL").toFile();
+        File file = Path.of(mainScriptDir, database, schema, type.toString(), objectName + ".SQL").toFile();
 
         String content = Files.readString(file.toPath());
 
@@ -147,7 +155,7 @@ public class ScriptSource {
     public void createScriptFile(Script script) {
         try {
             String scriptFileName = script.getObjectName() + ".SQL";
-            String scriptDirectoryPath = String.format("%s/%s/%s/%s", scriptRoot, script.getDatabaseName(), script.getSchemaName(), script.getObjectType());
+            String scriptDirectoryPath = String.format("%s/%s/%s/%s", mainScriptDir, script.getDatabaseName(), script.getSchemaName(), script.getObjectType());
             File directory = new File(scriptDirectoryPath);
             directory.mkdirs();
             FileWriter fileWriter = new FileWriter(Path.of(scriptDirectoryPath,  scriptFileName).toFile());

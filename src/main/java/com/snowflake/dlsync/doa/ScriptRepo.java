@@ -29,6 +29,9 @@ public class ScriptRepo {
         this.connectionProperties = connectionProperties;
         try {
             openConnection();
+            ResultSet resultSet = connection.createStatement().executeQuery("select current_database(), current_schema();");
+            resultSet.next();
+            log.info("Using database [{}] and schema [{}] for dlsync activities.", resultSet.getString(1), resultSet.getString(2));
             initScriptTables();
         } catch (SQLException e) {
             log.error("Error while initializing the script repo: {} cause {}", e.getMessage(), e.getCause());
@@ -51,6 +54,7 @@ public class ScriptRepo {
             String query = "SELECT * FROM " + CHANGE_SYNC_TABLE_NAME + " LIMIT 1;";
             Statement statement = connection.createStatement();
             statement.executeQuery(query);
+            updateOldTableNames();
         } catch (SQLException e) {
             log.info("Running for the first time. Creating required tables.");
             String createChangeSyncSql = "CREATE OR REPLACE TABLE " + CHANGE_SYNC_TABLE_NAME + " (ID integer PRIMARY KEY, CHANGE_TYPE varchar, STATUS varchar, LOG varchar, CHANGE_COUNT integer, START_TIME timestamp, END_TIME timestamp);";
@@ -64,6 +68,19 @@ public class ScriptRepo {
             statement.executeUpdate(createChangeSyncSql);
             statement.executeUpdate(createSqlHash);
             statement.executeUpdate(createSqlEvent);
+        }
+    }
+
+    private void updateOldTableNames() {
+        try {
+            String query = "SELECT * FROM DL_SYNC_SCRIPT LIMIT 1;";
+            Statement statement = connection.createStatement();
+            statement.executeQuery(query);
+            log.info("Found old dlsync table DL_SYNC_SCRIPT renaming it to [{}]", SCRIPT_HISTORY_TABLE_NAME);
+            String alterSql = "ALTER TABLE IF EXISTS DL_SYNC_SCRIPT RENAME TO " + SCRIPT_HISTORY_TABLE_NAME + ";";
+            statement.executeUpdate(alterSql);
+        } catch (SQLException e) {
+            log.debug("All tables are with new version");
         }
     }
 
