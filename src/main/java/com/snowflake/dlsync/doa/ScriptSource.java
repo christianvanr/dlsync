@@ -25,19 +25,17 @@ public class ScriptSource {
     public ScriptSource(String scriptRoot) {
         this.scriptRoot = scriptRoot;
         mainScriptDir = Path.of(scriptRoot, "main").toString();
-        File mainDirectory = new File(mainScriptDir);
-        if(!mainDirectory.exists()) {
-            mainScriptDir = scriptRoot;
-        }
         testScriptDir = Path.of(scriptRoot, "tests").toString();
         log.debug("Script file reader initialized with scriptRoot: {}", scriptRoot);
     }
 
     private List<String> readDatabase() {
+        File mainScriptFile = new File(mainScriptDir);
+        File scriptRootFile = new File(scriptRoot);
+        File scriptFiles = mainScriptFile.exists() ? mainScriptFile: scriptRootFile;
         List<String> dbs = new ArrayList<>();
-        File dbFiles = new File(mainScriptDir);
-        if(dbFiles.exists()) {
-            File[] allDbs = dbFiles.listFiles();
+        if(scriptFiles.exists()) {
+            File[] allDbs = scriptFiles.listFiles();
             for(File file: allDbs) {
                 if(file.isDirectory()) {
                     dbs.add(file.getName());
@@ -45,7 +43,7 @@ public class ScriptSource {
             }
         }
         else {
-            log.error("Invalid path for script root provided: {}", dbFiles.getAbsolutePath());
+            log.error("Invalid path for script provided: {}", scriptFiles.getAbsolutePath());
             throw new RuntimeException("No valid script source path provided");
         }
         return dbs;
