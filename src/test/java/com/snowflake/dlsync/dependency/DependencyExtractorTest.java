@@ -285,7 +285,6 @@ class DependencyExtractorTest {
                 dependency2
         );
         Set<Script> actual = dependencyExtractor.extractScriptDependencies(script);
-        System.out.println(actual);
         assertEquals(expected, actual, "Dependency extractor failed:");
     }
 
@@ -305,7 +304,6 @@ class DependencyExtractorTest {
                 dependency1
         );
         Set<Script> actual = dependencyExtractor.extractScriptDependencies(script);
-        System.out.println(actual);
         assertEquals(expected, actual, "Dependency extractor failed:");
     }
 
@@ -327,7 +325,6 @@ class DependencyExtractorTest {
                 dependency1
         );
         Set<Script> actual = dependencyExtractor.extractScriptDependencies(script);
-        System.out.println(actual);
         assertEquals(expected, actual, "Dependency extractor failed:");
     }
 

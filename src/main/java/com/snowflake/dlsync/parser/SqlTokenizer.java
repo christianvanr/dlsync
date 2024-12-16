@@ -132,10 +132,7 @@ public class SqlTokenizer {
                     int current = index - 1, end = 0;
                     String prevString = sql.substring(0, index);
                     Matcher matcher = Pattern.compile("\\s+(?i)as\\s+$").matcher(prevString);
-                    if(matcher.find()) {
-                        System.out.println("debug");
-                    }
-                    else {
+                    if(!matcher.find()) {
                         isOpened = true;
                     }
                     withoutLiterals[destinationIndex++] = sqlChar[index++];

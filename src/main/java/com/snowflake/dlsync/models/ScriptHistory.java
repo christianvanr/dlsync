@@ -5,12 +5,12 @@ import lombok.Data;
 import java.sql.Date;
 
 @Data
-public class ScriptHash {
+public class ScriptHistory {
+    private String scriptId;
     private String objectName;
-    private Integer version;
-    private String author;
+    private String objectType;
     private String rollbackScript;
-    private String hash;
+    private String scriptHash;
     private String deployedHash;
     private Long changeSyncId;
     private String createdBy;

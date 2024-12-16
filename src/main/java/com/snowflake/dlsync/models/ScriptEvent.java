@@ -4,9 +4,9 @@ import java.sql.Date;
 
 public class ScriptEvent {
     private String id;
+    private String scriptId;
     private String objectName;
-    private Integer version;
-    private String author;
+    private String scriptHash;
     private String status;
     private String log;
     private Long changeSyncId;
