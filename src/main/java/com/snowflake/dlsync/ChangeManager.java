@@ -10,7 +10,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.*;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
@@ -26,9 +25,10 @@ public class ChangeManager {
     private Properties jdbcProperties;
     private String scriptRoot;
 
+    private ConfigManager configManager;
     private ScriptSource scriptSource;
-    private List<Script> changedScripts;
     private ScriptRepo scriptRepo;
+    private DependencyGraph dependencyGraph;
     private DependencyExtractor dependencyExtractor;
     private ParameterInjector parameterInjector;
 
@@ -38,12 +38,15 @@ public class ChangeManager {
         scriptParameters = new Properties();
         loadParameters();
         log.info("Initialized with the following parameters: {}", scriptParameters);
+        configManager = new ConfigManager(scriptRoot);
+        Config config = configManager.getConfig();
         scriptRepo = new ScriptRepo(jdbcProperties);
-        changedScripts = new ArrayList<>(200);
         scriptSource = new ScriptSource(scriptRoot);
         parameterInjector = new ParameterInjector(scriptParameters);
         dependencyExtractor = new DependencyExtractor();
+        dependencyGraph = new DependencyGraph(dependencyExtractor, config);
     }
+
 
     private void loadEnvProperties() {
         profile = StringUtils.isEmpty(System.getenv("profile")) ? "dev" : System.getenv("profile").toLowerCase();
@@ -75,16 +78,6 @@ public class ChangeManager {
         }
     }
 
-    private Set<String> getConfigTables() throws IOException {
-        String configTablesFileName = "config_tables.txt";
-        File configTableFile = Path.of(scriptRoot, configTablesFileName).toFile();
-        if(configTableFile.exists()) {
-            return Files.readAllLines(configTableFile.toPath()).stream().collect(Collectors.toSet());
-        }
-        return new HashSet<>();
-    }
-
-
     private void validateScript(Script script) {
         if(script instanceof MigrationScript && scriptRepo.isScriptVersionDeployed(script)) {
             log.error("Migration type script changed. Script for the object {} has changed from previous deployments.", script.getId());
@@ -95,10 +88,11 @@ public class ChangeManager {
         log.info("Started Deploying {}", onlyHashes?"Only Hashes":"scripts");
         startSync(ChangeType.DEPLOY);
         scriptRepo.loadScriptHash();
-        changedScripts = scriptSource.getAllScripts().stream()
+        List<Script> changedScripts = scriptSource.getAllScripts()
+                .stream()
+                .filter(script -> !configManager.isScriptExcluded(script))
                 .filter(script -> scriptRepo.isScriptChanged(script))
                 .collect(Collectors.toList());
-        DependencyGraph dependencyGraph = new DependencyGraph();
         dependencyGraph.addNodes(changedScripts);
         List<Script> sequencedScript = dependencyGraph.topologicalSort();
         log.info("Deploying {} change scripts to db.", sequencedScript.size());
@@ -120,7 +114,6 @@ public class ChangeManager {
         scriptSource.getAllScripts().forEach(script -> deployedScriptIds.remove(script.getId()));
         List<MigrationScript> migrations = scriptRepo.getMigrationScripts(deployedScriptIds);
 
-        DependencyGraph dependencyGraph = new DependencyGraph();
         dependencyGraph.addNodes(migrations);
         List<Script> sequencedScript = dependencyGraph.topologicalSort();
 
@@ -140,7 +133,10 @@ public class ChangeManager {
         startSync(ChangeType.VERIFY);
         scriptRepo.loadDeployedHash();
         int failedCount = 0;
-        Map<String, List<MigrationScript>> groupedMigrationScripts = scriptSource.getAllScripts().stream()
+        List<Script> allScripts = scriptSource.getAllScripts().stream()
+                .filter(script -> !configManager.isScriptExcluded(script))
+                .collect(Collectors.toList());
+        Map<String, List<MigrationScript>> groupedMigrationScripts = allScripts.stream()
                 .filter(script -> script instanceof MigrationScript)
                 .map(script -> (MigrationScript)script)
                 .collect(Collectors.groupingBy(Script::getObjectName));
@@ -165,6 +161,10 @@ public class ChangeManager {
             List<Script> stateScripts = scriptRepo.getStateScriptsInSchema(schema);
             for(Script script: stateScripts) {
                 parameterInjector.parametrizeScript(script, true);
+                if(configManager.isScriptExcluded(script)) {
+                    log.info("Script {} is excluded from verification.", script);
+                    continue;
+                }
                 if (!scriptRepo.verifyScript(script)) {
                     failedCount++;
                     log.error("Script verification failed for {}", script);
@@ -180,14 +180,19 @@ public class ChangeManager {
             throw new RuntimeException("Verification failed!");
         }
         log.info("All scripts have been verified successfully.");
-        endSyncSuccess(ChangeType.VERIFY, (long)changedScripts.size());
+        endSyncSuccess(ChangeType.VERIFY, (long)allScripts.size());
         return true;
     }
 
     public void createAllScriptsFromDB(List<String> schemaNames) throws SQLException, IOException {
         log.info("Started create scripts from database with {} schemas", schemaNames == null ? "All":schemaNames);
         startSync(ChangeType.CREATE_SCRIPT);
-        Set<String> configTables = parameterInjector.injectParameters(getConfigTables());
+        Config config = configManager.getConfig();
+        HashSet<String> configTableWithParameter = new HashSet<>();
+        if(config != null && config.getConfigTables() != null) {
+            configTableWithParameter.addAll(config.getConfigTables());
+        }
+        Set<String> configTables = parameterInjector.injectParameters(configTableWithParameter);
 
         if(schemaNames == null) {
             schemaNames = scriptRepo.getAllSchemasInDatabase(scriptRepo.getDatabaseName());
@@ -211,7 +216,6 @@ public class ChangeManager {
     public void createLineage() throws IOException, SQLException {
         log.info("Started Lineage graph.");
         startSync(ChangeType.CREATE_LINEAGE);
-        DependencyGraph dependencyGraph = new DependencyGraph();
         List<Script> scripts = scriptSource.getAllScripts();
         dependencyGraph.addNodes(scripts);
         List<ScriptDependency> manualDependencies = scriptSource.getManuelLineages(scripts);
