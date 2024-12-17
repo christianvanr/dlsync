@@ -1,12 +1,15 @@
 package com.snowflake.dlsync.dependency;
 
+import com.snowflake.dlsync.ConfigManager;
 import com.snowflake.dlsync.ScriptFactory;
+import com.snowflake.dlsync.models.Config;
 import com.snowflake.dlsync.models.Script;
 import com.snowflake.dlsync.models.ScriptObjectType;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -18,8 +21,9 @@ class DependencyGraphTest {
     private DependencyGraph dependencyGraph;
 
     @BeforeEach
-    void setUp() {
-        dependencyGraph = new DependencyGraph();
+    void setUp() throws IOException {
+        DependencyExtractor dependencyExtractor = new DependencyExtractor();
+        dependencyGraph = new DependencyGraph(dependencyExtractor, new Config());
     }
 
     @AfterEach

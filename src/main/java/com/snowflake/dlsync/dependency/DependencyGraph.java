@@ -1,5 +1,7 @@
 package com.snowflake.dlsync.dependency;
 
+import com.snowflake.dlsync.models.Config;
+import com.snowflake.dlsync.models.DependencyOverride;
 import com.snowflake.dlsync.models.Script;
 import com.snowflake.dlsync.models.ScriptDependency;
 import lombok.extern.slf4j.Slf4j;
@@ -10,11 +12,13 @@ import java.util.stream.Collectors;
 @Slf4j
 public class DependencyGraph {
     private DependencyExtractor dependencyExtractor;
+    private Config config;
     private Map<Script, Set<Script>> dagGraph;
     private Map<Script, Integer> inDegree;
     private Stack<Script> zeroInDegreeScripts = new Stack<>();
-    public DependencyGraph() {
-        dependencyExtractor = new DependencyExtractor();
+    public DependencyGraph(DependencyExtractor dependencyExtractor, Config config) {
+        this.dependencyExtractor = dependencyExtractor;
+        this.config = config;
         dagGraph = new HashMap<>();
         inDegree = new HashMap<>();
     }
@@ -24,6 +28,8 @@ public class DependencyGraph {
         dependencyExtractor.addScripts(nodes);
         for(Script script: nodes) {
             Set<Script> scriptDependencies = dependencyExtractor.extractScriptDependencies(script);
+            List<Script> manualOverride = getDependencyOverride(script, nodes);
+            scriptDependencies.addAll(manualOverride);
             for(Script dependency: scriptDependencies) {
                 dagGraph.computeIfAbsent(dependency, k -> new HashSet<>()).add(script);
             }
@@ -90,5 +96,27 @@ public class DependencyGraph {
 
     public Map<Script, Set<Script>> getDagGraph() {
         return dagGraph;
+    }
+
+    public List<Script> getDependencyOverride(Script script, List<? extends Script> nodes) {
+        if(config == null) {
+            return new ArrayList<>();
+        }
+        List<DependencyOverride> overrides = config.getDependencyOverride();
+        if(overrides == null || overrides.size() == 0) {
+            return new ArrayList<>();
+        }
+
+        List<Script> scriptsDependencyOverrides = overrides.stream()
+                .filter(dependencyOverride -> dependencyOverride.getScript().equals(script.getFullObjectName()))
+                .flatMap(dependencyOverride -> dependencyOverride.getDependencies().stream())
+                .map(dependencyName -> findScriptByName(nodes, dependencyName))
+                .collect(Collectors.toList());
+
+        return scriptsDependencyOverrides;
+    }
+
+    private Script findScriptByName(List<? extends Script> allScripts, String fullObjectName) {
+        return allScripts.parallelStream().filter(script -> script.getFullObjectName().equals(fullObjectName)).findFirst().get();
     }
 }
