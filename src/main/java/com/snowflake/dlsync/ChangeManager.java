@@ -18,64 +18,18 @@ import java.util.stream.Collectors;
 
 @Slf4j
 public class ChangeManager {
-    private final static String[] JDBC_KEY = {"user", "password", "account", "warehouse", "db", "schema", "role", "authenticator"};
-    private final static String SCRIPT_ROOT_KEY = "SCRIPT_ROOT";
-    private String profile;
-    private Properties scriptParameters;
-    private Properties jdbcProperties;
-    private String scriptRoot;
-
-    private ConfigManager configManager;
+    private Config config;
     private ScriptSource scriptSource;
     private ScriptRepo scriptRepo;
     private DependencyGraph dependencyGraph;
-    private DependencyExtractor dependencyExtractor;
     private ParameterInjector parameterInjector;
 
-    public ChangeManager() throws IOException, NoSuchAlgorithmException, SQLException {
-        jdbcProperties = new Properties();
-        loadEnvProperties();
-        scriptParameters = new Properties();
-        loadParameters();
-        log.info("Initialized with the following parameters: {}", scriptParameters);
-        configManager = new ConfigManager(scriptRoot);
-        Config config = configManager.getConfig();
-        scriptRepo = new ScriptRepo(jdbcProperties);
-        scriptSource = new ScriptSource(scriptRoot);
-        parameterInjector = new ParameterInjector(scriptParameters);
-        dependencyExtractor = new DependencyExtractor();
-        dependencyGraph = new DependencyGraph(dependencyExtractor, config);
-    }
-
-
-    private void loadEnvProperties() {
-        profile = StringUtils.isEmpty(System.getenv("profile")) ? "dev" : System.getenv("profile").toLowerCase();
-        scriptRoot = System.getenv(SCRIPT_ROOT_KEY);
-        log.info("Using {} profile and script root path of {}", profile, scriptRoot);
-        for(String key: JDBC_KEY) {
-            String jdbcConfigValue = System.getenv(key);
-            if(jdbcConfigValue == null) {
-                if(!key.equals("authenticator")) {
-                    log.warn("JDBC connection property {} not found", key);
-                }
-            }
-            else {
-                jdbcProperties.put(key, jdbcConfigValue);
-            }
-        }
-    }
-
-    private void loadParameters() throws IOException {
-        String propertiesFilePath = "parameter-" + profile + ".properties";
-        log.debug("Loading property file from {}", propertiesFilePath);
-        InputStream input = new FileInputStream(Path.of(scriptRoot, propertiesFilePath).toFile());
-        scriptParameters.load(input);
-        Map<String, String> environmentVariables = System.getenv();
-        for(String key: environmentVariables.keySet()) {
-            if(scriptParameters.containsKey(key)) {
-                scriptParameters.put(key, environmentVariables.get(key));
-            }
-        }
+    public ChangeManager(Config config, ScriptSource scriptSource, ScriptRepo scriptRepo, DependencyGraph dependencyGraph, ParameterInjector parameterInjector) {
+        this.config= config;
+        this.scriptSource = scriptSource;
+        this.scriptRepo = scriptRepo;
+        this.dependencyGraph = dependencyGraph;
+        this.parameterInjector = parameterInjector;
     }
 
     private void validateScript(Script script) {
@@ -90,7 +44,7 @@ public class ChangeManager {
         scriptRepo.loadScriptHash();
         List<Script> changedScripts = scriptSource.getAllScripts()
                 .stream()
-                .filter(script -> !configManager.isScriptExcluded(script))
+                .filter(script -> !config.isScriptExcluded(script))
                 .filter(script -> scriptRepo.isScriptChanged(script))
                 .collect(Collectors.toList());
         dependencyGraph.addNodes(changedScripts);
@@ -134,7 +88,7 @@ public class ChangeManager {
         scriptRepo.loadDeployedHash();
         int failedCount = 0;
         List<Script> allScripts = scriptSource.getAllScripts().stream()
-                .filter(script -> !configManager.isScriptExcluded(script))
+                .filter(script -> !config.isScriptExcluded(script))
                 .collect(Collectors.toList());
         Map<String, List<MigrationScript>> groupedMigrationScripts = allScripts.stream()
                 .filter(script -> script instanceof MigrationScript)
@@ -161,7 +115,7 @@ public class ChangeManager {
             List<Script> stateScripts = scriptRepo.getStateScriptsInSchema(schema);
             for(Script script: stateScripts) {
                 parameterInjector.parametrizeScript(script, true);
-                if(configManager.isScriptExcluded(script)) {
+                if(config.isScriptExcluded(script)) {
                     log.info("Script {} is excluded from verification.", script);
                     continue;
                 }
@@ -187,7 +141,6 @@ public class ChangeManager {
     public void createAllScriptsFromDB(List<String> schemaNames) throws SQLException, IOException {
         log.info("Started create scripts from database with {} schemas", schemaNames == null ? "All":schemaNames);
         startSync(ChangeType.CREATE_SCRIPT);
-        Config config = configManager.getConfig();
         HashSet<String> configTableWithParameter = new HashSet<>();
         if(config != null && config.getConfigTables() != null) {
             configTableWithParameter.addAll(config.getConfigTables());

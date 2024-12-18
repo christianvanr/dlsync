@@ -24,7 +24,7 @@ public class Main {
             if( args.length >= 2 && args[1].equalsIgnoreCase("--schemas")) {
                 schemas = Arrays.asList(Arrays.copyOfRange(args, 2, args.length));
             }
-            changeManager = new ChangeManager();
+            changeManager = ChangeMangerFactory.createChangeManger();
             switch (changeType) {
                 case DEPLOY:
                     changeManager.deploy(onlyHashes);
