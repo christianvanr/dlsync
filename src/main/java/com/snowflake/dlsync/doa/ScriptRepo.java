@@ -264,7 +264,7 @@ public class ScriptRepo {
         log.info("Getting {} type scripts in schema: {}",type, schema);
         String sql = "";
         if(type == ScriptObjectType.FUNCTIONS || type == ScriptObjectType.PROCEDURES) {
-            sql = String.format("SELECT %s_NAME, ARGUMENT_SIGNATURE FROM INFORMATION_SCHEMA.%s WHERE %s_SCHEMA = '%s'",type.getSingular(), type, type.getSingular(), schema.toUpperCase());
+            sql = String.format("SELECT %s_NAME, ARGUMENT_SIGNATURE FROM INFORMATION_SCHEMA.%s WHERE %s_SCHEMA = '%s'",type.getEscapedSingular(), type, type.getEscapedSingular(), schema.toUpperCase());
 
         }
         else if(type == ScriptObjectType.STREAMS || type == ScriptObjectType.TASKS || type == ScriptObjectType.STAGES) {
@@ -277,7 +277,7 @@ public class ScriptRepo {
             sql = String.format("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE <> 'VIEW' AND TABLE_SCHEMA = '%s'", schema.toUpperCase());
         }
         else {
-            sql = String.format("SELECT %s_NAME FROM INFORMATION_SCHEMA.%s WHERE %s_SCHEMA = '%s'",type.getSingular(), type, type.getSingular(), schema.toUpperCase());
+            sql = String.format("SELECT %s_NAME FROM INFORMATION_SCHEMA.%s WHERE %s_SCHEMA = '%s'",type.getEscapedSingular(), type, type.getEscapedSingular(), schema.toUpperCase());
         }
 
         log.debug("Getting all scripts using SQL: {}", sql);
@@ -290,10 +290,10 @@ public class ScriptRepo {
                 String arguments = resultSet.getString(2);
                 String regex = "(\\(|\\,\\s)\\w+";
                 arguments = arguments.replaceAll(regex, "$1");
-                ddlSql = String.format("SELECT GET_DDL('%s', '%s.%s%s', true);",type.getSingular(), schema.toUpperCase(), scriptObjectName.toUpperCase(), arguments);
+                ddlSql = String.format("SELECT GET_DDL('%s', '%s.%s%s', true);",type.getEscapedSingular(), schema.toUpperCase(), scriptObjectName.toUpperCase(), arguments);
             }
             else {
-                ddlSql = String.format("SELECT GET_DDL('%s', '%s.%s', true);",type.getSingular(), schema.toUpperCase(), scriptObjectName.toUpperCase());
+                ddlSql = String.format("SELECT GET_DDL('%s', '%s.%s', true);",type.getEscapedSingular(), schema.toUpperCase(), scriptObjectName.toUpperCase());
             }
             log.debug("Get ddl script: {}", ddlSql);
             ResultSet ddlResultSet = connection.createStatement().executeQuery(ddlSql);

@@ -10,6 +10,9 @@ public enum ScriptObjectType {
     public String getSingular() {
         return singular;
     }
+    public String getEscapedSingular() {
+        return singular.replace(" ", "_");
+    }
     public boolean isMigration() {
         switch (this) {
             case TABLES:

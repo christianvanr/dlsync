@@ -1,5 +1,6 @@
 package com.snowflake.dlsync;
 
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.snowflake.dlsync.models.Config;
@@ -70,18 +71,21 @@ public class ConfigManager {
         }
     }
 
-    public void readConfig() throws IOException {
+    public void readConfig() {
         File configFile = Path.of(scriptRoot, CONFIG_FILE_NAME).toFile();
-        System.out.println(configFile.getAbsolutePath());
-        if(configFile.exists()) {
-            ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
-            mapper.findAndRegisterModules();
-            config = mapper.readValue(configFile, Config.class);
+        try {
+            if(configFile.exists()) {
+                ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+                mapper.findAndRegisterModules();
+                config = mapper.readValue(configFile, Config.class);
+            }
+            else {
+                config = new Config();
+            }
+        } catch (IOException e) {
+            log.error("Failed to parse config file [{}]", configFile.getAbsolutePath());
+            throw new RuntimeException("Can not parse Config file. Please use yaml file with allowed properties", e);
         }
-        else {
-            config = new Config();
-        }
-
     }
 
     public void readParameters() throws IOException {
