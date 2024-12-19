@@ -20,6 +20,8 @@ dependencies {
     implementation 'ch.qos.logback:logback-classic:1.5.12'
     implementation 'org.slf4j:slf4j-api:2.0.4'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.18.2'
+    implementation 'commons-cli:commons-cli:1.9.0'
+
     compileOnly 'org.projectlombok:lombok:1.18.24'
     annotationProcessor 'org.projectlombok:lombok:1.18.24'
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
