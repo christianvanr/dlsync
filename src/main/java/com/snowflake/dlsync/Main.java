@@ -2,7 +2,6 @@ package com.snowflake.dlsync;
 
 import com.snowflake.dlsync.models.ChangeType;
 import lombok.extern.slf4j.Slf4j;
-import net.snowflake.client.jdbc.internal.apache.http.impl.cookie.DefaultCookieSpec;
 import org.apache.commons.cli.*;
 
 import java.io.IOException;
