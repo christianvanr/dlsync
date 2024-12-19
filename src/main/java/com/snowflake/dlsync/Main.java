@@ -2,6 +2,7 @@ package com.snowflake.dlsync;
 
 import com.snowflake.dlsync.models.ChangeType;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.cli.*;
 
 import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
@@ -19,8 +20,11 @@ public class Main {
         boolean onlyHashes = false;
         List<String> schemas = null;
         try {
-            changeType = args.length >= 1 ? ChangeType.valueOf(args[0]) : ChangeType.VERIFY;
-            onlyHashes = args.length >= 2 ? args[1].equalsIgnoreCase("--only-hashes") : false;
+            changeType = getChangeType(args);
+            CommandLine commandLine = buildCommandOptions(args);
+            onlyHashes = commandLine.hasOption("only-hashes");
+            String scriptRoot = commandLine.getOptionValue("script-root");
+
             if( args.length >= 2 && args[1].equalsIgnoreCase("--schemas")) {
                 schemas = Arrays.asList(Arrays.copyOfRange(args, 2, args.length));
             }
@@ -69,13 +73,34 @@ public class Main {
             log.error("Error: {} ", e);
             changeManager.endSyncError(changeType, e.getMessage());
             System.exit(4);
+        } catch (ParseException e) {
+            e.printStackTrace();
+            log.error("Error: {} ", e);
+            changeManager.endSyncError(changeType, e.getMessage());
+            System.exit(5);
         }
         catch (Exception e) {
             e.printStackTrace();
             log.error("Error: {}", e.getMessage());
             changeManager.endSyncError(changeType, e.getMessage());
-            System.exit(5);
+            System.exit(6);
         }
+    }
+
+    public static CommandLine buildCommandOptions(String[] args) throws ParseException {
+        String[] argsWithoutCommand = Arrays.copyOfRange(args, 1, args.length);
+        Options options = new Options();
+        Option onlyHashes = new Option("o", "only-hashes", false, "Deploy only hashes to database");
+        options.addOption(onlyHashes);
+        Option scriptRoot = new Option("s", "script-root", true, "Script root directory");
+        options.addOption(scriptRoot);
+
+        CommandLine commandLine = new DefaultParser().parse(options, argsWithoutCommand);
+        return commandLine;
+    }
+
+    public static ChangeType getChangeType(String[] args) {
+        return args.length >= 1 ? ChangeType.valueOf(args[0].toUpperCase()) : ChangeType.VERIFY;
     }
 
 
