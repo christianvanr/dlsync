@@ -149,6 +149,7 @@ Writing unit tests follows 3-step process:
 - mock your table dependencies using CTE by putting the table name as the CTE name.
 - Add expected data in the CTE, by putting `EXPECTED_DATA` as CTE name.
 - Add the query to refer to the database object with select statement.
+
 For example, if you have a view named `SAMPLE_VIEW`  with the following content:
 ```
 create or replace view ${MY_DB}.{MY_SCHEMA}.SAMPLE_VIEW as 
@@ -346,7 +347,7 @@ dlsync create_script --script-root path/to/db_scripts --profile uat
 ```
 
 ## Tables used by this tool
-DLSync stores script meta data, deployment history and logs in the database.
+DLSync stores script metadata, deployment history and logs in the database.
 DLSync will depend on these tables to track the changes and deployment history. If these tables are missing from the schema and database provided in the connection parameter, then DLSync will create these tables. 
 Please make sure the role provided in the connection has the necessary privileges to create tables in the schema. 
 
@@ -354,7 +355,7 @@ Please make sure the role provided in the connection has the necessary privilege
 
 This tool uses the following tables to store important information:
 ### dl_sync_script_history
-This table store the meta data for script files. It contains the following columns:
+This table store the metadata for script files. It contains the following columns:
 ```
 script_id: # for state script the script name, for migration script script name plus the version number
 object_name: the object name of the script
