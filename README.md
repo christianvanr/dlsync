@@ -291,8 +291,8 @@ connection:
     db: # snowflake database
     schema: # snowflake schema
     authenticator: # snowflake authenticator(optional)
-    private_key_file: # snowflake p8 file
-    private_key_file_pwd: # password for private key file
+    private_key_file: # snowflake p8 file (optional)
+    private_key_pwd: # password for private key file (optional)
  ```
 The `configTables` is used by create script module to add the data of the tables to the script file.
 The `scriptExclusion` is used to exclude the script files from being processed by this tool. 
