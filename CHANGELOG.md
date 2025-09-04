@@ -1,6 +1,10 @@
 # DLSync Changelog
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [2.4.2] - 2025-09-03
+### Updated
+- Github action for release
+- Updated readme for private key authentication
 ## [2.4.1] - 2025-08-22
 ### Fixed
 - Fixed issue for encrypted private key files
