@@ -251,6 +251,7 @@ public class SqlTokenizer {
 
             String fullObjectName = matcher.group("name");
             String scriptObjectName  = fullObjectName.split("\\.")[2];
+            scriptObjectName = scriptObjectName.replaceAll("^\"|\"$", "");
 
             if (objectType.isMigration()) {
                 MigrationScript script = ScriptFactory.getMigrationScript(database, schema, objectType, scriptObjectName, content);
