@@ -202,7 +202,6 @@ class SqlTokenizerTest {
                 "create or replace transient table db1.schema1.table2 (col1 varchar, col2 number);\n" +
                 "create or replace hybrid table db1.schema1.table3 (col1 varchar, col2 number);\n" +
                 "create or replace table db1.schema1.\"table4\" (col1 varchar, col2 number);\n" +
-//                "create or replace dynamic table db1.schema1.table5 (col1, col2) target_lag = '10 minutes' refresh_mode = AUTO initialize = ON_CREATE warehouse = MY_WAREHOUSE as select col1, col2 from db1.schema2.view1;\n" +
                 "create or replace function db1.schema1.function1(arg1 varchar)\n" +
                 "RETURNS VARCHAR(16777216)\n" +
                 "LANGUAGE JAVASCRIPT\n" +
