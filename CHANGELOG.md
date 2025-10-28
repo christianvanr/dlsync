@@ -1,6 +1,9 @@
 # DLSync Changelog
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [2.4.4] - 2025-10-27
+### Fixed
+- Fixed issue in create script with quoted object names 
 ## [2.4.3] - 2025-10-14
 ### Fixed
 - Fixed dockerfile to build and copy jar file correctly
