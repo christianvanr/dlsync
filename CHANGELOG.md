@@ -1,6 +1,9 @@
 # DLSync Changelog
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [2.5.0] - 2025-11-06
+### Added
+- Adding Dynamic Table to support the dynamic tables migration
 ## [2.4.4] - 2025-10-27
 ### Fixed
 - Fixed issue in create script with quoted object names 
