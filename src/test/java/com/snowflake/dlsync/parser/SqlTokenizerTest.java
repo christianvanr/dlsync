@@ -554,7 +554,51 @@ class SqlTokenizerTest {
         assertEquals(ScriptObjectType.PIPES, script.getObjectType(), "Object type should be PIPES");
         assertEquals(content, script.getContent(), "Script content should match the input content");
     }
-    
 
+    @Test
+    void parseScriptTypeDynamicTable() {
+        String filePath = "db_scripts/db1/schema1/DYNAMIC_TABLES/DYNAMIC_TABLE1.SQL";
+        String name = "DYNAMIC_TABLE1.SQL";
+        String scriptType = "DYNAMIC_TABLES";
+        String content = "---version: 0, author: dlsync \n" +
+                "CREATE OR REPLACE DYNAMIC TABLE db1.schema1.DYNAMIC_TABLE1\n" +
+                "  TARGET_LAG = '1 minute'\n" +
+                "  WAREHOUSE = 'my_warehouse'\n" +
+                "  AS SELECT id, name, COUNT(*) as count FROM db1.schema1.source_table GROUP BY id, name;\n" +
+                "---rollback: drop dynamic table db1.schema1.DYNAMIC_TABLE1;\n" +
+                "---verify: select * from db1.schema1.DYNAMIC_TABLE1;";
+
+        String expected_rollback = "drop dynamic table db1.schema1.DYNAMIC_TABLE1;";
+        String expected_verify = "select * from db1.schema1.DYNAMIC_TABLE1;";
+        Set<Script> scripts = SqlTokenizer.parseScript(filePath, name, scriptType, content);
+
+        assertNotNull(scripts, "Scripts should not be null");
+        assertEquals(1, scripts.size(), "There should be exactly one script parsed");
+
+        MigrationScript script = (MigrationScript) scripts.iterator().next();
+        assertEquals(0, script.getVersion(), "Version should be 0");
+        assertEquals(expected_rollback, script.getRollback(), "Rollback should match the input content");
+        assertEquals(expected_verify, script.getVerify(), "Verify should match the input content");
+        assertEquals("DYNAMIC_TABLE1", script.getObjectName(), "Object name should be DYNAMIC_TABLE1");
+        assertEquals("db1".toUpperCase(), script.getDatabaseName(), "Database name should be db1");
+        assertEquals("schema1".toUpperCase(), script.getSchemaName(), "Schema name should be schema1");
+        assertEquals(ScriptObjectType.DYNAMIC_TABLES, script.getObjectType(), "Object type should be DYNAMIC_TABLES");
+        assertEquals(content, script.getContent(), "Script content should match the input content");
+    }
+
+    @Test
+    void parseScriptUnsupportedObjectType() {
+        String filePath = "db_scripts/db1/schema1/UNKNOWN/OBJECT1.SQL";
+        String name = "OBJECT1.SQL";
+        String scriptType = "UNKNOWN_TYPE";
+        String content = "CREATE OR REPLACE UNKNOWN db1.schema1.OBJECT1;";
+
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
+            SqlTokenizer.parseScript(filePath, name, scriptType, content);
+        }, "Should throw RuntimeException for unsupported object type");
+
+        assertEquals("Unknown script type of directory: UNKNOWN_TYPE", exception.getMessage(),
+                "Exception message should indicate unknown script type");
+    }
 
 }

@@ -29,7 +29,7 @@ public class SqlTokenizer {
     private static final String IDENTIFIER_REGEX = "((?:\\\"[^\"]+\\\"\\.)|(?:[{}$a-zA-Z0-9_]+\\.))?((?:\\\"[^\"]+\\\"\\.)|(?:[{}$a-zA-Z0-9_]+\\.))?(?i)";
     private static final String MIGRATION_REGEX = VERSION_REGEX + AUTHOR_REGEX + CONTENT_REGEX + ROLL_BACK_REGEX + VERIFY_REGEX;
 
-    private static final String DDL_REGEX = ";\\n+(CREATE\\s+OR\\s+REPLACE\\s+(TRANSIENT\\s|HYBRID\\s|SECURE\\s)?(?<type>FILE FORMAT|\\w+)\\s+(?<name>[\\\"\\w.]+)([\\s\\S]+?)(?=(;\\nCREATE\\s+)|(;$)))";
+    private static final String DDL_REGEX = ";\\n+(CREATE\\s+OR\\s+REPLACE\\s+(TRANSIENT\\s|HYBRID\\s|SECURE\\s)?(?<type>DYNAMIC TABLE|FILE FORMAT|VIEW|FUNCTION|PROCEDURE|TABLE|STREAM|SEQUENCE|STAGE|TASK|STREAMLIT|PIPE|ALERT|\\w+)\\s+(?<name>[\\\"\\w.]+)([\\s\\S]+?)(?=(;\\nCREATE\\s+)|(;$)))";
 
     private static final String STRING_LITERAL_REGEX = "(?<!as\\s{1,5})'([^'\\\\]*(?:\\\\.[^'\\\\]*)*(?:''[^'\\\\]*)*)'";
 
@@ -64,7 +64,12 @@ public class SqlTokenizer {
 
     public static Set<Script> parseScript(String filePath, String name, String scriptType, String content) {
         String objectName = SqlTokenizer.extractObjectName(name, content);
-        ScriptObjectType objectType = ScriptObjectType.valueOf(scriptType);
+        Optional<ScriptObjectType> optionalObjectType = Arrays.stream(ScriptObjectType.values()).filter( type -> type.toString().equalsIgnoreCase(scriptType)).findFirst();
+        if(!optionalObjectType.isPresent()) {
+            log.error("Unsupported object type: {} found!", scriptType, name);
+            throw new RuntimeException("Unknown script type of directory: " + scriptType);
+        }
+        ScriptObjectType objectType = optionalObjectType.get();
         String fullIdentifier = SqlTokenizer.getFirstFullIdentifier(objectName, content);
         if(fullIdentifier == null || fullIdentifier.isEmpty()) {
             log.error("Error reading script: {}, name and content mismatch", name);
@@ -245,6 +250,10 @@ public class SqlTokenizer {
         while(matcher.find()) {
             String content = matcher.group(1) + ";";
             String type = matcher.group("type");
+            if(type == null) {
+                log.error("Unable to parse object type from DDL: {}", content);
+                throw new RuntimeException("Unable to parse object type from DDL.");
+            }
             ScriptObjectType objectType = Arrays.stream(ScriptObjectType.values())
                     .filter(ot -> ot.getSingular().equalsIgnoreCase(type))
                     .collect(Collectors.toList()).get(0);
