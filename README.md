@@ -91,7 +91,7 @@ Inside this directory create a directory structure like:
 Where 
 - **database_name_*:** is the database name of your project, 
 - **schema_name_*:** are schemas inside the database, 
-- **object_type:** is type of the object only 1 of the following (VIEWS, FUNCTIONS, PROCEDURES, FILE_FORMATS, TABLES, SEQUENCES, STAGES, STREAMS, TASKS, STREAMLITS, PIPES, ALERTS, DYNAMIC_TABLES),
+- **object_type:** is type of the object only 1 of the following (VIEWS, FUNCTIONS, PROCEDURES, FILE_FORMATS, TABLES, SEQUENCES, STAGES, STREAMS, TASKS, STREAMLITS, PIPES, ALERTS, DYNAMIC_TABLES, MASKING_POLICIES),
 - **object_name_*.sql:** are individual database object scripts.
 - **config.yml:** is a configuration file used to configure DLSync behavior.
 - **parameter-[profile-*].properties:** is parameter to value map file. This is going to be used by corresponding individual instances of your database.

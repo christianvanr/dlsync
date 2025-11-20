@@ -587,6 +587,26 @@ class SqlTokenizerTest {
     }
 
     @Test
+    void parseScriptTypeMaskingPolicy() {
+        String filePath = "db_scripts/db1/schema1/MASKING_POLICIES/EMAIL_MASK.SQL";
+        String name = "EMAIL_MASK.SQL";
+        String scriptType = "MASKING_POLICIES";
+        String content = "CREATE OR REPLACE MASKING POLICY db1.schema1.EMAIL_MASK AS (val STRING) RETURNS STRING -> CASE WHEN CURRENT_ROLE() IN ('ADMIN') THEN val ELSE '***MASKED***' END;";
+
+        Set<Script> scripts = SqlTokenizer.parseScript(filePath, name, scriptType, content);
+
+        assertNotNull(scripts, "Scripts should not be null");
+        assertEquals(1, scripts.size(), "There should be exactly one script parsed");
+
+        Script script = scripts.iterator().next();
+        assertEquals("EMAIL_MASK", script.getObjectName(), "Object name should be EMAIL_MASK");
+        assertEquals("db1".toUpperCase(), script.getDatabaseName(), "Database name should be db1");
+        assertEquals("schema1".toUpperCase(), script.getSchemaName(), "Schema name should be schema1");
+        assertEquals(ScriptObjectType.MASKING_POLICIES, script.getObjectType(), "Object type should be MASKING_POLICIES");
+        assertEquals(content, script.getContent(), "Script content should match the input content");
+    }
+
+    @Test
     void parseScriptUnsupportedObjectType() {
         String filePath = "db_scripts/db1/schema1/UNKNOWN/OBJECT1.SQL";
         String name = "OBJECT1.SQL";
