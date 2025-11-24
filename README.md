@@ -91,7 +91,7 @@ Inside this directory create a directory structure like:
 Where 
 - **database_name_*:** is the database name of your project, 
 - **schema_name_*:** are schemas inside the database, 
-- **object_type:** is type of the object only 1 of the following (VIEWS, FUNCTIONS, PROCEDURES, FILE_FORMATS, TABLES, SEQUENCES, STAGES, STREAMS, TASKS, STREAMLITS, PIPES, ALERTS, DYNAMIC_TABLES),
+- **object_type:** is type of the object only 1 of the following (VIEWS, FUNCTIONS, PROCEDURES, FILE_FORMATS, TABLES, SEQUENCES, STAGES, STREAMS, TASKS, STREAMLITS, PIPES, ALERTS, DYNAMIC_TABLES, MASKING_POLICIES),
 - **object_name_*.sql:** are individual database object scripts.
 - **config.yml:** is a configuration file used to configure DLSync behavior.
 - **parameter-[profile-*].properties:** is parameter to value map file. This is going to be used by corresponding individual instances of your database.
@@ -104,7 +104,7 @@ Each object will have a single SQL to track the changes applied to the given obj
 For example if you have a view named `SAMPLE_VIEW` in schema `MY_SCHEMA` in database `MY_DATABASE`, then the script file should be named `SAMPLE_VIEW.SQL` and should be placed in the directory `[scripts_root]/main/MY_DATABASE/MY_SCHEMA/VIEWS/SAMPLE_VIEW.SQL`.
 The structure and content of the scripts will defer based on the type of script. This tool categorizes script in to 2 types named State script and Migration script.
 #### 1. State Script
-This type of script is used for object types of Views, UDF, Stored Procedure, File formats and Pipes.
+This type of script is used for object types of VIEWS, UDF, PROCEDURES, FILE FORMATS, PIPES AND MASKING POLICIES.
 In this type of script you define the current state(desired state) of the object.
 When a change is made to the script, DLSync replaces the current object with the updated definition. 
 These types of scripts must always have `create or replace` statement. Every time you make a change to the script DLSync will replace the object with the new definition.

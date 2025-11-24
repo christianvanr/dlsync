@@ -1,6 +1,10 @@
 # DLSync Changelog
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [2.6.0] - 2025-11-24
+### Added
+- Added support Masking Policy object type
+- Fixed log message unsupported object types in create script
 ## [2.5.0] - 2025-11-06
 ### Added
 - Added support for Dynamic Table object type

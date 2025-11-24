@@ -29,7 +29,7 @@ public class SqlTokenizer {
     private static final String IDENTIFIER_REGEX = "((?:\\\"[^\"]+\\\"\\.)|(?:[{}$a-zA-Z0-9_]+\\.))?((?:\\\"[^\"]+\\\"\\.)|(?:[{}$a-zA-Z0-9_]+\\.))?(?i)";
     private static final String MIGRATION_REGEX = VERSION_REGEX + AUTHOR_REGEX + CONTENT_REGEX + ROLL_BACK_REGEX + VERIFY_REGEX;
 
-    private static final String DDL_REGEX = ";\\n+(CREATE\\s+OR\\s+REPLACE\\s+(TRANSIENT\\s|HYBRID\\s|SECURE\\s)?(?<type>DYNAMIC TABLE|FILE FORMAT|VIEW|FUNCTION|PROCEDURE|TABLE|STREAM|SEQUENCE|STAGE|TASK|STREAMLIT|PIPE|ALERT|\\w+)\\s+(?<name>[\\\"\\w.]+)([\\s\\S]+?)(?=(;\\nCREATE\\s+)|(;$)))";
+    private static final String DDL_REGEX = ";\\n+(CREATE\\s+OR\\s+REPLACE\\s+(TRANSIENT\\s|HYBRID\\s|SECURE\\s)?(?<type>DYNAMIC TABLE|FILE FORMAT|MASKING POLICY|VIEW|FUNCTION|PROCEDURE|TABLE|STREAM|SEQUENCE|STAGE|TASK|STREAMLIT|PIPE|ALERT|\\w+)\\s+(?<name>[\\\"\\w.]+)([\\s\\S]+?)(?=(;\\nCREATE\\s+)|(;$)))";
 
     private static final String STRING_LITERAL_REGEX = "(?<!as\\s{1,5})'([^'\\\\]*(?:\\\\.[^'\\\\]*)*(?:''[^'\\\\]*)*)'";
 
@@ -254,9 +254,12 @@ public class SqlTokenizer {
                 log.error("Unable to parse object type from DDL: {}", content);
                 throw new RuntimeException("Unable to parse object type from DDL.");
             }
-            ScriptObjectType objectType = Arrays.stream(ScriptObjectType.values())
-                    .filter(ot -> ot.getSingular().equalsIgnoreCase(type))
-                    .collect(Collectors.toList()).get(0);
+            Optional<ScriptObjectType> optionalObjectType = Arrays.stream(ScriptObjectType.values()).filter( ot -> ot.getSingular().equalsIgnoreCase(type)).findFirst();
+            if(!optionalObjectType.isPresent()) {
+                log.error("Unsupported object type: {} found in DDL!", type);
+                throw new RuntimeException("Unknown object type found in DDL: " + type);
+            }
+            ScriptObjectType objectType = optionalObjectType.get();
 
             String fullObjectName = matcher.group("name");
             String scriptObjectName  = fullObjectName.split("\\.")[2];
