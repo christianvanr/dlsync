@@ -1,6 +1,6 @@
 package com.snowflake.dlsync.models;
 
-public class MigrationScript extends Script {
+public class MigrationScript extends SchemaScript {
 
     private Long version;
     private String author;

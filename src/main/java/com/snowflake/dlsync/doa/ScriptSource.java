@@ -86,9 +86,9 @@ public class ScriptSource {
             return testScripts;
     }
 
-    public List<Script> getScriptsInSchema(String database, String schema) throws IOException {
+    public List<SchemaScript> getScriptsInSchema(String database, String schema) throws IOException {
         log.info("Reading script files from schema: {}", schema);
-        List<Script> scripts = new ArrayList<>();
+        List<SchemaScript> scripts = new ArrayList<>();
         File schemaDirectory = Path.of(mainScriptDir, database, schema).toFile();
         File[] scriptTypeDirectories = schemaDirectory.listFiles();
 
@@ -97,7 +97,7 @@ public class ScriptSource {
                 File[] scriptFiles = scriptType.listFiles();
                 for(File file: scriptFiles) {
                     if(file.getName().toLowerCase().endsWith(".sql")){
-                       Set<Script> scriptsFromFile = SqlTokenizer.parseScript(file.getPath(), file.getName(), scriptType.getName(), Files.readString(file.toPath()));
+                       Set<SchemaScript> scriptsFromFile = SqlTokenizer.parseSchemaScript(file.getPath(), file.getName(), scriptType.getName(), Files.readString(file.toPath()));
                        scripts.addAll(scriptsFromFile);
                     }
                     else {
@@ -112,7 +112,7 @@ public class ScriptSource {
         return scripts;
     }
 
-    public Set<Script> buildScriptFromFile(File file, File scriptType) throws IOException {
+    public Set<SchemaScript> buildScriptFromFile(File file, File scriptType) throws IOException {
         String content = Files.readString(file.toPath());
         String objectName = SqlTokenizer.extractObjectName(file.getName(), content);
         ScriptObjectType objectType = ScriptObjectType.valueOf(scriptType.getName());
@@ -127,7 +127,7 @@ public class ScriptSource {
             log.error("Error reading script: {}, database or schema not specified", file.getName());
             throw new RuntimeException("Database, schema and object name must be provided in the script file.");
         }
-        Set<Script> scripts = new HashSet<>();
+        Set<SchemaScript> scripts = new HashSet<>();
         if(objectType.isMigration()) {
             List<Migration> migrations = SqlTokenizer.parseMigrationScripts(content);
             for(Migration migration: migrations) {
@@ -141,7 +141,7 @@ public class ScriptSource {
             }
         }
         else {
-            Script script = ScriptFactory.getStateScript(file.getPath(), database, schema, objectType, objectName, content);
+            SchemaScript script = ScriptFactory.getDeclarativeScript(file.getPath(), database, schema, objectType, objectName, content);
 //            Script script = new Script(database, schema, objectType, objectName, content);
             scripts.add(script);
         }
@@ -157,21 +157,21 @@ public class ScriptSource {
         if(file.exists()) {
             log.info("Test script file found: {}", file.getPath());
             String content = Files.readString(file.toPath());
-            TestScript testScript = ScriptFactory.getTestScript(file.getPath(), script.getDatabaseName(), script.getSchemaName(), script.getObjectType(), objectName, content, script);
+            TestScript testScript = ScriptFactory.getTestScript(file.getPath(), objectName, content, script);
             return testScript;
         }
         return null;
 
     }
 
-    public void createScriptFiles(List<Script> scripts) {
+    public void createSchemaScriptFiles(List<SchemaScript> scripts) {
         log.debug("Creating script files for the scripts: {}", scripts);
-        for(Script script: scripts) {
-            createScriptFile(script);
+        for(SchemaScript script: scripts) {
+            createSchemaScriptFile(script);
         }
     }
 
-    public void createScriptFile(Script script) {
+    public void createSchemaScriptFile(SchemaScript script) {
         try {
             String scriptFileName = script.getObjectName() + ".SQL";
             String scriptDirectoryPath = String.format("%s/%s/%s/%s", mainScriptDir, script.getDatabaseName(), script.getSchemaName(), script.getObjectType());

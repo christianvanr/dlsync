@@ -1,19 +1,12 @@
 package com.snowflake.dlsync.parser;
 
 import com.snowflake.dlsync.ScriptFactory;
-import com.snowflake.dlsync.models.Migration;
-import com.snowflake.dlsync.models.MigrationScript;
-import com.snowflake.dlsync.models.Script;
-import com.snowflake.dlsync.models.ScriptObjectType;
+import com.snowflake.dlsync.models.*;
 import lombok.extern.slf4j.Slf4j;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 @Slf4j
 public class SqlTokenizer {
@@ -62,7 +55,7 @@ public class SqlTokenizer {
         return migrations;
     }
 
-    public static Set<Script> parseScript(String filePath, String name, String scriptType, String content) {
+    public static Set<SchemaScript> parseSchemaScript(String filePath, String name, String scriptType, String content) {
         String objectName = SqlTokenizer.extractObjectName(name, content);
         Optional<ScriptObjectType> optionalObjectType = Arrays.stream(ScriptObjectType.values()).filter( type -> type.toString().equalsIgnoreCase(scriptType)).findFirst();
         if(!optionalObjectType.isPresent()) {
@@ -81,7 +74,7 @@ public class SqlTokenizer {
             log.error("Error reading script: {}, database or schema not specified", name);
             throw new RuntimeException("Database, schema and object name must be provided in the script file.");
         }
-        Set<Script> scripts = new HashSet<>();
+        Set<SchemaScript> scripts = new HashSet<>();
         if(objectType.isMigration()) {
             List<Migration> migrations = SqlTokenizer.parseMigrationScripts(content);
             if(migrations.isEmpty()) {
@@ -98,7 +91,7 @@ public class SqlTokenizer {
             }
         }
         else {
-            Script script = ScriptFactory.getStateScript(filePath, database, schema, objectType, objectName, content);
+            SchemaScript script = ScriptFactory.getDeclarativeScript(filePath, database, schema, objectType, objectName, content);
 //            Script script = new Script(database, schema, objectType, objectName, content);
             scripts.add(script);
         }
@@ -243,9 +236,9 @@ public class SqlTokenizer {
         return fullIdentifiers;
     }
 
-    public static List<Script> parseDdlScripts(String ddl, String database, String schema) {
+    public static List<SchemaScript> parseDdlScripts(String ddl, String database, String schema) {
         Matcher matcher = Pattern.compile(DDL_REGEX, Pattern.CASE_INSENSITIVE).matcher(ddl);
-        List<Script> scripts = new ArrayList<>();
+        List<SchemaScript> scripts = new ArrayList<>();
         log.debug("parsing ddl scripts {}", ddl);
         while(matcher.find()) {
             String content = matcher.group(1) + ";";
@@ -268,7 +261,7 @@ public class SqlTokenizer {
                 MigrationScript script = ScriptFactory.getMigrationScript(database, schema, objectType, scriptObjectName, content);
                 scripts.add(script);
             } else {
-                Script script = ScriptFactory.getStateScript(database, schema, objectType, scriptObjectName, content);
+                SchemaScript script = ScriptFactory.getDeclarativeScript(database, schema, objectType, scriptObjectName, content);
                 scripts.add(script);
             }
         }

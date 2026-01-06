@@ -1,26 +1,18 @@
-
-
 package com.snowflake.dlsync.models;
 
 import com.snowflake.dlsync.Util;
-import lombok.extern.slf4j.Slf4j;
 
 import java.util.Objects;
 
-@Slf4j
 public abstract class Script {
     private String scriptPath;
-    private String databaseName;
-    private String schemaName;
     private String objectName;
     private ScriptObjectType objectType;
     private String content;
     private String hash;
 
-    public Script(String scriptPath, String databaseName, String schemaName, String objectName, ScriptObjectType objectType, String content) {
+    public Script(String scriptPath, String objectName, ScriptObjectType objectType, String content) {
         this.scriptPath = scriptPath;
-        this.databaseName = databaseName.toUpperCase();
-        this.schemaName = schemaName.toUpperCase();
         this.objectName = objectName.toUpperCase();
         this.objectType = objectType;
         this.content = content.trim();
@@ -29,22 +21,6 @@ public abstract class Script {
 
     public String getScriptPath() {
         return scriptPath;
-    }
-
-    public String getDatabaseName() {
-        return databaseName;
-    }
-
-    public void setDatabaseName(String databaseName) {
-        this.databaseName = databaseName.toUpperCase();
-    }
-
-    public String getSchemaName() {
-        return schemaName;
-    }
-
-    public void setSchemaName(String schemaName) {
-        this.schemaName = schemaName.toUpperCase();
     }
 
     public String getObjectName() {
@@ -79,10 +55,6 @@ public abstract class Script {
         this.hash = hash;
     }
 
-    public String getFullObjectName() {
-        return String.format("%s.%s.%s", databaseName, schemaName, objectName);
-    }
-
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -100,6 +72,10 @@ public abstract class Script {
     public String toString() {
         return getId();
     }
+
     public abstract String getId();
 
+    public abstract String getFullObjectName();
+
+    public abstract String getFullObjectNameOfIdentifier(String partialName);
 }

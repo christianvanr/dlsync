@@ -229,15 +229,15 @@ public class ScriptRepo {
         }
 
     }
-    public List<Script> getScriptsInSchema(String schema) throws SQLException {
-        List<Script> scripts = new ArrayList<>();
+    public List<SchemaScript> getScriptsInSchema(String schema) throws SQLException {
+        List<SchemaScript> scripts = new ArrayList<>();
         for(ScriptObjectType type: ScriptObjectType.values()) {
             scripts.addAll(getScriptsInSchema(schema, type));
         }
         return scripts;
     }
 
-    public List<Script> getAllScriptsInSchema(String schema) throws SQLException {
+    public List<SchemaScript> getAllScriptsInSchema(String schema) throws SQLException {
         log.info("Getting all scripts in schema: {}", schema);
         String sql = String.format("SELECT GET_DDL('SCHEMA', '%s', true)", schema);
         log.debug("Getting all scripts using SQL: {}", sql);
@@ -251,8 +251,8 @@ public class ScriptRepo {
         }
     }
 
-    public List<Script> getStateScriptsInSchema(String schema) throws SQLException {
-        List<Script> scripts = new ArrayList<>();
+    public List<SchemaScript> getDeclarativeScriptsInSchema(String schema) throws SQLException {
+        List<SchemaScript> scripts = new ArrayList<>();
         for(ScriptObjectType type: ScriptObjectType.values()) {
             if(!type.isMigration()) {
                 scripts.addAll(getScriptsInSchema(schema, type));
@@ -261,7 +261,7 @@ public class ScriptRepo {
         return scripts;
     }
 
-    public List<Script> getScriptsInSchema(String schema, ScriptObjectType type) throws SQLException {
+    public List<SchemaScript> getScriptsInSchema(String schema, ScriptObjectType type) throws SQLException {
         log.debug("Getting {} type scripts in schema: {}",type, schema);
         String sql = "";
         if(type == ScriptObjectType.FUNCTIONS || type == ScriptObjectType.PROCEDURES) {
@@ -282,7 +282,7 @@ public class ScriptRepo {
         }
 
         log.debug("Getting all scripts using SQL: {}", sql);
-        List<Script> scripts = new ArrayList<>();
+        List<SchemaScript> scripts = new ArrayList<>();
         ResultSet resultSet = connection.createStatement().executeQuery(sql);
         while (resultSet.next()) {
             String ddlSql = "";
@@ -314,7 +314,7 @@ public class ScriptRepo {
                 scripts.add(script);
             }
             else {
-                Script script = ScriptFactory.getStateScript(getDatabaseName(), schema, type, scriptObjectName, content);
+                SchemaScript script = ScriptFactory.getDeclarativeScript(getDatabaseName(), schema, type, scriptObjectName, content);
                 scripts.add(script);
             }
 
@@ -323,7 +323,7 @@ public class ScriptRepo {
     }
 
 
-    public Script addConfig(Script script) throws SQLException {
+    public SchemaScript addConfig(SchemaScript script) throws SQLException {
         if(script.getObjectType() == ScriptObjectType.TABLES) {
             String additionalContent = String.format("SELECT * FROM %s", script.getFullObjectName());
             ResultSet resultSet = connection.createStatement().executeQuery(additionalContent);
@@ -390,10 +390,10 @@ public class ScriptRepo {
 //        return scripts;
 //    }
 
-    public List<Script> getAllScriptsInDatabase() throws SQLException {
+    public List<SchemaScript> getAllScriptsInDatabase() throws SQLException {
         log.info("Getting all scripts for database: {}", getDatabaseName());
         List<String> schemas = getAllSchemasInDatabase(getDatabaseName());
-        List<Script> scripts = new ArrayList<>();
+        List<SchemaScript> scripts = new ArrayList<>();
         for(String schema: schemas) {
 //            for(ScriptObjectType scriptObjectType: ScriptObjectType.values()) {
 //                scripts.addAll(getScriptsInSchema(schema, scriptObjectType));
