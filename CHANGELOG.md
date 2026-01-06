@@ -1,6 +1,9 @@
 # DLSync Changelog
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [2.6.1] - 2026-01-06
+### Fixed
+- Fixed private key authentication issue with parameter names
 ## [2.6.0] - 2025-11-24
 ### Added
 - Added support Masking Policy object type
