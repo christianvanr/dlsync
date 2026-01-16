@@ -53,6 +53,9 @@ public class DependencyExtractor {
     }
 
     private boolean isDependencyOf(Script dependency, Script target) {
+        if(target.getObjectName().equals("USER_ROLE") && dependency.getObjectName().equals("{EXAMPLE_DB}.${MAIN_SCHEMA}")) {
+            log.debug("User-role dependency found: {}", dependency);
+        }
         if(dependency.getObjectName().equals(target.getObjectName())) {
             log.debug("Found same object name with different schema: {}, {}", dependency, target);
         }
@@ -61,7 +64,7 @@ public class DependencyExtractor {
             return false;
         }
         for(String identifier: fullIdentifiers) {
-            String fullObjectName = target.getFullObjectNameOfIdentifier(identifier);
+            String fullObjectName = target.resolveObjectReference(identifier);
             if (fullObjectName.equals(dependency.getFullObjectName())) {
                 return true;
             }

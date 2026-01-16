@@ -1,6 +1,7 @@
 package com.snowflake.dlsync.dependency;
 
 import com.snowflake.dlsync.ScriptFactory;
+import com.snowflake.dlsync.models.MigrationScript;
 import com.snowflake.dlsync.models.SchemaScript;
 import com.snowflake.dlsync.models.Script;
 import com.snowflake.dlsync.models.ScriptObjectType;
@@ -12,6 +13,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -31,7 +33,7 @@ class DependencyExtractorTest {
     List<SchemaScript> mockScripts(String name, String schema, String... contents) {
         List<SchemaScript> scripts = new ArrayList<>();
         for(int i = 0; i < contents.length; i++) {
-            SchemaScript script = ScriptFactory.getDeclarativeScript("TEST_DB", schema, ScriptObjectType.VIEWS, name + i, contents[i]);
+            SchemaScript script = ScriptFactory.getSchemaScript("TEST_DB", schema, ScriptObjectType.VIEWS, name + i, contents[i]);
             scripts.add(script);
         }
         return scripts;
@@ -52,12 +54,12 @@ class DependencyExtractorTest {
 
     SchemaScript mockViewDependency(String name, String schema) {
         String content = "CREATE OR REPLACE VIEW " + name + " AS SELECT * FROM  TABLE1;";
-        return ScriptFactory.getDeclarativeScript("TEST_DB", schema, ScriptObjectType.VIEWS, name, content);
+        return ScriptFactory.getSchemaScript("TEST_DB", schema, ScriptObjectType.VIEWS, name, content);
     }
 
-    SchemaScript mockTableDependency(String name, String schema) {
+    MigrationScript mockTableDependency(String name, String schema) {
         String content = "CREATE OR REPLACE TABLE " + name + "(ID VARCHAR, COL1 NUMBER)";
-        return ScriptFactory.getMigrationScript("TEST_DB", schema, ScriptObjectType.TABLES, name, content);
+        return ScriptFactory.getSchemaMigrationScript("TEST_DB", schema, ScriptObjectType.TABLES, name, content, 0L, "dlsync", "", "");
     }
 
     SchemaScript mockUdfDependency(String name, String schema) {
@@ -68,13 +70,13 @@ class DependencyExtractorTest {
                 "$$\n" +
                 " return ARG1.toUpperCase();\n" +
                 "$$;";
-        return ScriptFactory.getDeclarativeScript("TEST_DB", schema, ScriptObjectType.FUNCTIONS, name, content);
+        return ScriptFactory.getSchemaScript("TEST_DB", schema, ScriptObjectType.FUNCTIONS, name, content);
     }
 
     @Test
     void extractScriptDependenciesTestFrom() {
         String content = "CREATE OR REPLACE VIEW VIEW1 AS SELECT * FROM  DEPENDENCY join test_schema2.not_dependency1;";
-        SchemaScript script = ScriptFactory.getDeclarativeScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.VIEWS, "VIEW1", content);
+        SchemaScript script = ScriptFactory.getSchemaScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.VIEWS, "VIEW1", content);
         SchemaScript dependency = mockViewDependency("DEPENDENCY", "TEST_SCHEMA");
         List<SchemaScript> changedScript = mockScripts();
         changedScript.add(script);
@@ -90,7 +92,7 @@ class DependencyExtractorTest {
     @Test
     void extractScriptDependenciesTestJoin() {
         String content = "CREATE OR REPLACE VIEW VIEW1 AS SELECT * FROM  DEPENDENCY JOIN test_schema.JOIN_DEPENDENCY;";
-        SchemaScript script = ScriptFactory.getDeclarativeScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.VIEWS, "VIEW1", content);
+        SchemaScript script = ScriptFactory.getSchemaScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.VIEWS, "VIEW1", content);
 
         SchemaScript dependency1 = mockViewDependency("DEPENDENCY", "TEST_SCHEMA");
         SchemaScript dependency2 = mockViewDependency("JOIN_DEPENDENCY", "TEST_SCHEMA");
@@ -111,7 +113,7 @@ class DependencyExtractorTest {
     @Test
     void extractScriptDependenciesTestWithQuotedObjects() {
         String content = "CREATE OR REPLACE VIEW VIEW1 AS SELECT * FROM  \"TEST_SCHEMA2\".\"DEPENDENCY\" join \"TEST_SCHEMA2\".\"NOT_DEPENDENCY1\"";
-        SchemaScript script = ScriptFactory.getDeclarativeScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.VIEWS, "VIEW1", content);
+        SchemaScript script = ScriptFactory.getSchemaScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.VIEWS, "VIEW1", content);
 
         SchemaScript dependency1 = mockViewDependency("DEPENDENCY", "TEST_SCHEMA2");
 
@@ -138,7 +140,7 @@ class DependencyExtractorTest {
                 "SELECT * FROM NOT_DEPENDENCY2;\n" +
                 "*/\n" +
                 "DEPENDENCY3 T4 ON T4.ID = T1.ID;";
-        SchemaScript script = ScriptFactory.getDeclarativeScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.VIEWS, "VIEW1", content);
+        SchemaScript script = ScriptFactory.getSchemaScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.VIEWS, "VIEW1", content);
 
         SchemaScript dependency1 = mockViewDependency("DEPENDENCY1", "TEST_SCHEMA");
         SchemaScript dependency2 = mockViewDependency("DEPENDENCY2", "TEST_SCHEMA");
@@ -183,7 +185,7 @@ class DependencyExtractorTest {
                 "         ), CTE5 AS (SELECT * FROM CTE4 JOIN JOIN_DEPENDENCY3)\n" +
                 "    SELECT  * FROM CTE1 C1 JOIN CTE5 CT5 ON CT1.ID=CT5.ID JOIN JOIN_DEPENDENCY4 ON CT1.ID=CT5.ID;";
 
-        SchemaScript script = ScriptFactory.getDeclarativeScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.VIEWS, "VIEW1", content);
+        SchemaScript script = ScriptFactory.getSchemaScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.VIEWS, "VIEW1", content);
 
         SchemaScript dependency1 = mockViewDependency("DEPENDENCY1", "TEST_SCHEMA");
         SchemaScript dependency2 = mockViewDependency("DEPENDENCY2", "TEST_SCHEMA");
@@ -217,7 +219,7 @@ class DependencyExtractorTest {
     @Test
     void extractScriptDependenciesTestWithQuoted() {
         String content = "CREATE OR REPLACE VIEW VIEW1 AS SELECT 'SELECT * FROM NOT_DEPENDENCY1', * FROM  DEPENDENCY1";
-        SchemaScript script = ScriptFactory.getDeclarativeScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.VIEWS, "VIEW1", content);
+        SchemaScript script = ScriptFactory.getSchemaScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.VIEWS, "VIEW1", content);
         SchemaScript dependency1 = mockViewDependency("DEPENDENCY1", "TEST_SCHEMA");
         List<SchemaScript> changedScript = mockScripts();
         changedScript.add(script);
@@ -234,7 +236,7 @@ class DependencyExtractorTest {
     @Test
     void extractScriptDependenciesTestWithAliases() {
         String content = "CREATE OR REPLACE VIEW VIEW1 AS SELECT  * FROM  DEPENDENCY1 as dp1, DEPENDENCY2 dp2, DEPENDENCY3 AS dp3 where dp1.id=dp2.id and dp2.id=dp3.id;";
-        SchemaScript script = ScriptFactory.getDeclarativeScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.VIEWS, "VIEW1", content);
+        SchemaScript script = ScriptFactory.getSchemaScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.VIEWS, "VIEW1", content);
         SchemaScript dependency1 = mockViewDependency("DEPENDENCY1", "TEST_SCHEMA");
         SchemaScript dependency2 = mockViewDependency("DEPENDENCY2", "TEST_SCHEMA");
         SchemaScript dependency3 = mockViewDependency("DEPENDENCY3", "TEST_SCHEMA");
@@ -257,7 +259,7 @@ class DependencyExtractorTest {
     @Test
     void extractScriptDependenciesWithSameObjectName() {
         String content = "CREATE OR REPLACE VIEW TEST_SCHEMA.VIEW1 AS SELECT * FROM  TEST_SCHEMA2.VIEW1 join test_schema2.not_dependency1;";
-        SchemaScript script = ScriptFactory.getDeclarativeScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.VIEWS, "VIEW1", content);
+        SchemaScript script = ScriptFactory.getSchemaScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.VIEWS, "VIEW1", content);
         SchemaScript dependency = mockViewDependency("VIEW1", "TEST_SCHEMA2");
         List<SchemaScript> changedScript = mockScripts();
         changedScript.add(script);
@@ -273,7 +275,7 @@ class DependencyExtractorTest {
     @Test
     void extractScriptDependenciesWithUdf() {
         String content = "CREATE OR REPLACE VIEW TEST_SCHEMA.VIEW1 AS SELECT COL1, COL2, TEST_SCHEMA1.UDF1(COL3) AS COL4 FROM  TEST_SCHEMA2.VIEW1 join test_schema2.not_dependency1;";
-        SchemaScript script = ScriptFactory.getDeclarativeScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.VIEWS, "VIEW1", content);
+        SchemaScript script = ScriptFactory.getSchemaScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.VIEWS, "VIEW1", content);
         SchemaScript dependency1 = mockViewDependency("VIEW1", "TEST_SCHEMA2");
         SchemaScript dependency2 = mockUdfDependency("UDF1", "TEST_SCHEMA1");
         List<SchemaScript> changedScript = mockScripts();
@@ -295,7 +297,7 @@ class DependencyExtractorTest {
         "---version: 0, author: dlsync\n" +
         "CREATE OR REPLACE TABLE TEST_SCHEMA.TABLE1 AS SELECT * FROM TEST_SCHEMA.VIEW1;\n";
 
-        SchemaScript script = ScriptFactory.getDeclarativeScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.TABLES, "TABLE1", content);
+        SchemaScript script = ScriptFactory.getSchemaScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.TABLES, "TABLE1", content);
         SchemaScript dependency1 = mockViewDependency("VIEW1", "TEST_SCHEMA");
         List<SchemaScript> changedScript = mockScripts();
         changedScript.add(script);
@@ -314,15 +316,15 @@ class DependencyExtractorTest {
                 "---version: 1, author: dlsync\n" +
                 "INSERT INTO TEST_SCHEMA.TABLE1 values(1, 'not_dependency1');\n";
 
-        SchemaScript script = ScriptFactory.getMigrationScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.TABLES, "TABLE1", content, 1L, "dlsync", "", "");
-        SchemaScript dependency1 = mockTableDependency("TABLE1", "TEST_SCHEMA");
+        Script script = ScriptFactory.getSchemaMigrationScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.TABLES, "TABLE1", content, 1L, "dlsync", "", "");
+        MigrationScript dependency1 = mockTableDependency("TABLE1", "TEST_SCHEMA");
         SchemaScript not_dependency1 = mockViewDependency("NOT_DEPENDENCY1", "TEST_SCHEMA");
-        List<SchemaScript> changedScript = mockScripts();
+        List<Script> changedScript = mockScripts().stream().map(schemaScript -> (Script)schemaScript).collect(Collectors.toList());
         changedScript.add(script);
         changedScript.add(dependency1);
         changedScript.add(not_dependency1);
         dependencyExtractor.addScripts(changedScript);
-        Set<SchemaScript> expected = Set.of(
+        Set<Script> expected = Set.of(
                 dependency1
         );
         Set<Script> actual = dependencyExtractor.extractScriptDependencies(script);
@@ -332,7 +334,7 @@ class DependencyExtractorTest {
     @Test
     void extractScriptDependenciesIdentifierAfterEquals() {
         String content = "CREATE OR REPLACE VIEW TEST_SCHEMA.VIEW1 AS SELECT COL1, COL2=FUNC1(COL3) FROM  TEST_SCHEMA2.VIEW1 join test_schema2.not_dependency1;";
-        SchemaScript script = ScriptFactory.getDeclarativeScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.VIEWS, "VIEW1", content);
+        SchemaScript script = ScriptFactory.getSchemaScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.VIEWS, "VIEW1", content);
         SchemaScript dependency1 = mockViewDependency("VIEW1", "TEST_SCHEMA2");
         SchemaScript dependency2 = mockUdfDependency("FUNC1", "TEST_SCHEMA");
         List<SchemaScript> changedScript = mockScripts();
@@ -351,7 +353,7 @@ class DependencyExtractorTest {
     // TODO: Fix this failing test
     void extractScriptDependenciesWithSameName() {
         String content = "CREATE OR REPLACE VIEW TEST_SCHEMA.VIEW1 AS SELECT COL1, COL2 FROM  TEST_SCHEMA2.VIEW1 join test_schema2.not_dependency1;";
-        SchemaScript script = ScriptFactory.getDeclarativeScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.VIEWS, "VIEW1", content);
+        SchemaScript script = ScriptFactory.getSchemaScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.VIEWS, "VIEW1", content);
         SchemaScript dependency1 = mockViewDependency("VIEW1", "TEST_SCHEMA2");
         SchemaScript notDependency = mockUdfDependency("VIEW1", "TEST_SCHEMA2");
         List<SchemaScript> changedScript = mockScripts();
@@ -372,13 +374,13 @@ class DependencyExtractorTest {
                 "root_location=@TEST_SCHEMA2.STAGE1\n" +
                 "\tmain_file='/streamlit_app.py'\n" +
                 "\tquery_warehouse='${MY_WAREHOUSE}'";
-        SchemaScript script = ScriptFactory.getDeclarativeScript("TEST_DB", "TEST_SCHEMA1", ScriptObjectType.STREAMLITS, "STREAMLIT_1", content);
-        SchemaScript dependency1 = ScriptFactory.getMigrationScript("TEST_DB", "TEST_SCHEMA2", ScriptObjectType.STAGES, "STAGE1", "---version: 1, author: dlsync\nCREATE OR REPLACE STAGE TEST_SCHEMA2.STAGE1;", 1L, "dlsync", "", "");
-        List<SchemaScript> changedScript = mockScripts();
+        SchemaScript script = ScriptFactory.getSchemaScript("TEST_DB", "TEST_SCHEMA1", ScriptObjectType.STREAMLITS, "STREAMLIT_1", content);
+        Script dependency1 = ScriptFactory.getSchemaMigrationScript("TEST_DB", "TEST_SCHEMA2", ScriptObjectType.STAGES, "STAGE1", "---version: 1, author: dlsync\nCREATE OR REPLACE STAGE TEST_SCHEMA2.STAGE1;", 1L, "dlsync", "", "");
+        List<Script> changedScript = mockScripts().stream().map(schemaScript -> (Script)schemaScript).collect(Collectors.toList());;
         changedScript.add(script);
         changedScript.add(dependency1);
         dependencyExtractor.addScripts(changedScript);
-        Set<SchemaScript> expected = Set.of(
+        Set<Script> expected = Set.of(
                 dependency1
         );
         Set<Script> actual = dependencyExtractor.extractScriptDependencies(script);

@@ -12,6 +12,7 @@ import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 public class ChangeManager {
@@ -90,7 +91,7 @@ public class ChangeManager {
         startSync(ChangeType.ROLLBACK);
         Set<String> deployedScriptIds = new HashSet<>(scriptRepo.loadScriptHash());
         scriptSource.getAllScripts().forEach(script -> deployedScriptIds.remove(script.getId()));
-        List<MigrationScript> migrations = scriptRepo.getMigrationScripts(deployedScriptIds);
+        List<MigrationScript> migrations = scriptRepo.getDeployedMigrationScripts(deployedScriptIds);
         dependencyGraph.addNodes(migrations);
 
         List<Script> changedScripts = scriptSource.getAllScripts()
@@ -133,8 +134,9 @@ public class ChangeManager {
 
         List<String> schemaNames = scriptRepo.getAllSchemasInDatabase(scriptRepo.getDatabaseName());
         for(String schema: schemaNames) {
-            List<SchemaScript> declarativeScripts = scriptRepo.getDeclarativeScriptsInSchema(schema)
+            List<SchemaScript> declarativeScripts = scriptRepo.getAllScriptsInSchema(schema)
                     .stream()
+                    .filter(script -> !script.isMigration())
                     .filter(script -> !config.isScriptExcluded(script))
                     .collect(Collectors.toList());
 
@@ -158,7 +160,7 @@ public class ChangeManager {
         Map<String, List<MigrationScript>> groupedMigrationScripts = sourceScripts.stream()
                 .filter(script -> script instanceof MigrationScript)
                 .map(script -> (MigrationScript)script)
-                .collect(Collectors.groupingBy(SchemaScript::getObjectName));
+                .collect(Collectors.groupingBy(MigrationScript::getFullObjectName));
 
         for(String objectName: groupedMigrationScripts.keySet()) {
             List<MigrationScript> sameObjectMigrations = groupedMigrationScripts.get(objectName);

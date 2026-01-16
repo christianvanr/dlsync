@@ -37,10 +37,10 @@ class DependencyGraphTest {
         String content3 = "CREATE OR replace VIEW VIEW3 AS SELECT * FROM VIEW2;";
         String content4 = "create or replace view VIEW4 AS SELECT * FROM VIEW3;";
 
-        SchemaScript script1 = ScriptFactory.getDeclarativeScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.VIEWS, "VIEW1", content1);
-        SchemaScript script2 = ScriptFactory.getDeclarativeScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.VIEWS, "VIEW2", content2);
-        SchemaScript script3 = ScriptFactory.getDeclarativeScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.VIEWS, "VIEW3", content3);
-        SchemaScript script4 = ScriptFactory.getDeclarativeScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.VIEWS, "VIEW4", content4);
+        SchemaScript script1 = ScriptFactory.getSchemaScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.VIEWS, "VIEW1", content1);
+        SchemaScript script2 = ScriptFactory.getSchemaScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.VIEWS, "VIEW2", content2);
+        SchemaScript script3 = ScriptFactory.getSchemaScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.VIEWS, "VIEW3", content3);
+        SchemaScript script4 = ScriptFactory.getSchemaScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.VIEWS, "VIEW4", content4);
 
         dependencyGraph.addNodes(List.of(script1, script2, script3, script4));
         List<Script> expected = List.of(script1, script2, script3, script4);
@@ -61,14 +61,14 @@ class DependencyGraphTest {
         String content7 = "CREATE OR REPLACE VIEW VIEW7 AS SELECT * FROM VIEW6 V5 JOIN VIEW1 V1 ON V5.ID=V1.ID;";
         String content8 = "CREATE OR REPLACE VIEW VIEW7 AS SELECT * FROM VIEW1 WHERE ID NOT IN (SELECT ID FROM VIEW7);";
 
-        SchemaScript script1 = ScriptFactory.getDeclarativeScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.VIEWS, "VIEW1", content1);
-        SchemaScript script2 = ScriptFactory.getDeclarativeScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.VIEWS, "VIEW2", content2);
-        SchemaScript script3 = ScriptFactory.getDeclarativeScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.VIEWS, "VIEW3", content3);
-        SchemaScript script4 = ScriptFactory.getDeclarativeScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.VIEWS, "VIEW4", content4);
-        SchemaScript script5 = ScriptFactory.getDeclarativeScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.VIEWS, "VIEW5", content5);
-        SchemaScript script6 = ScriptFactory.getDeclarativeScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.VIEWS, "VIEW6", content6);
-        SchemaScript script7 = ScriptFactory.getDeclarativeScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.VIEWS, "VIEW7", content7);
-        SchemaScript script8 = ScriptFactory.getDeclarativeScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.VIEWS, "VIEW8", content8);
+        SchemaScript script1 = ScriptFactory.getSchemaScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.VIEWS, "VIEW1", content1);
+        SchemaScript script2 = ScriptFactory.getSchemaScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.VIEWS, "VIEW2", content2);
+        SchemaScript script3 = ScriptFactory.getSchemaScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.VIEWS, "VIEW3", content3);
+        SchemaScript script4 = ScriptFactory.getSchemaScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.VIEWS, "VIEW4", content4);
+        SchemaScript script5 = ScriptFactory.getSchemaScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.VIEWS, "VIEW5", content5);
+        SchemaScript script6 = ScriptFactory.getSchemaScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.VIEWS, "VIEW6", content6);
+        SchemaScript script7 = ScriptFactory.getSchemaScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.VIEWS, "VIEW7", content7);
+        SchemaScript script8 = ScriptFactory.getSchemaScript("TEST_DB", "TEST_SCHEMA", ScriptObjectType.VIEWS, "VIEW8", content8);
 
         List<SchemaScript> scripts = new ArrayList<>(List.of(script1, script2, script3, script4, script5, script6, script7, script8));
         Collections.shuffle(scripts);

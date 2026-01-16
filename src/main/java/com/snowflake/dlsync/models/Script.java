@@ -2,6 +2,7 @@ package com.snowflake.dlsync.models;
 
 import com.snowflake.dlsync.Util;
 
+import java.util.List;
 import java.util.Objects;
 
 public abstract class Script {
@@ -10,6 +11,7 @@ public abstract class Script {
     private ScriptObjectType objectType;
     private String content;
     private String hash;
+    private List<MigrationScript> migrations;
 
     public Script(String scriptPath, String objectName, ScriptObjectType objectType, String content) {
         this.scriptPath = scriptPath;
@@ -17,6 +19,11 @@ public abstract class Script {
         this.objectType = objectType;
         this.content = content.trim();
         this.hash = hash = Util.getMd5Hash(this.content);
+    }
+
+    public Script(String scriptPath, String objectName, ScriptObjectType objectType, String content, List<MigrationScript> migrations) {
+        this(scriptPath, objectName, objectType, content);
+        this.migrations = migrations;
     }
 
     public String getScriptPath() {
@@ -47,12 +54,32 @@ public abstract class Script {
         this.content = content.trim();
     }
 
+    public List<MigrationScript> getMigrations() {
+        if (isMigration()) {
+            return migrations;
+        }
+        throw new UnsupportedOperationException("Migrations are only available for migration type script.");
+    }
+
+    public  void setMigrations(List<MigrationScript> migrations) {
+        if (isMigration()) {
+            this.migrations = migrations;
+        }
+        else {
+            throw new UnsupportedOperationException("Migrations are only available for migration type script.");
+        }
+    }
+
     public String getHash() {
         return hash;
     }
 
     public void setHash(String hash) {
         this.hash = hash;
+    }
+
+    public boolean isMigration() {
+        return objectType.isMigration();
     }
 
     @Override
@@ -77,5 +104,5 @@ public abstract class Script {
 
     public abstract String getFullObjectName();
 
-    public abstract String getFullObjectNameOfIdentifier(String partialName);
+    public abstract String resolveObjectReference(String partialName);
 }

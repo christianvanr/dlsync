@@ -33,7 +33,7 @@ public class TestScript extends Script {
     }
 
     @Override
-    public String getFullObjectNameOfIdentifier(String partialName) {
-        return mainScript.getFullObjectNameOfIdentifier(partialName);
+    public String resolveObjectReference(String partialName) {
+        return mainScript.resolveObjectReference(partialName);
     }
 }
