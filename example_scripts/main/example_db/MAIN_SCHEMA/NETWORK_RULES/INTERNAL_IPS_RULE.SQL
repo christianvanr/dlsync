@@ -1,0 +1,7 @@
+CREATE OR REPLACE NETWORK RULE ${EXAMPLE_DB}.${MAIN_SCHEMA}.INTERNAL_IPS_RULE
+  MODE = INGRESS
+  TYPE = IPV4
+  VALUE_LIST = ('192.168.0.0/24', '192.168.1.0/24')
+  COMMENT = 'Example network rule for ingress traffic'
+;
+
