@@ -1,10 +1,7 @@
 package com.snowflake.dlsync.parser;
 
 import com.snowflake.dlsync.ScriptFactory;
-import com.snowflake.dlsync.models.Migration;
-import com.snowflake.dlsync.models.MigrationScript;
-import com.snowflake.dlsync.models.Script;
-import com.snowflake.dlsync.models.ScriptObjectType;
+import com.snowflake.dlsync.models.*;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -210,16 +207,18 @@ class SqlTokenizerTest {
                 "AS '" +
                 "return arg1.trim();\n"+
                 "';";
-        List<Script> actual = SqlTokenizer.parseDdlScripts(ddl, "db1", "schema1");
+        List<SchemaScript> actual = SqlTokenizer.parseDdlScripts(ddl, "db1", "schema1");
+        Long version = 0L;
+        String author = "DlSync";
         List<Script> expected = List.of(
-                ScriptFactory.getStateScript("db1", "schema1", ScriptObjectType.VIEWS, "view1","create or replace view db1.schema1.view1 as select * from table1;"),
-                ScriptFactory.getMigrationScript("db1", "schema1", ScriptObjectType.TABLES, "table1","create or replace table db1.schema1.table1 (col1 varchar, col2 number);"),
-                ScriptFactory.getMigrationScript("db1", "schema1", ScriptObjectType.TABLES, "table2","create or replace transient table db1.schema1.table2 (col1 varchar, col2 number);"),
-                ScriptFactory.getMigrationScript("db1", "schema1", ScriptObjectType.TABLES, "table3","create or replace hybrid table db1.schema1.table3 (col1 varchar, col2 number);"),
-                ScriptFactory.getMigrationScript("db1", "schema1", ScriptObjectType.TABLES, "\"table4\"","create or replace table db1.schema1.\"table4\" (col1 varchar, col2 number);"),
-                ScriptFactory.getMigrationScript("db1", "schema1", ScriptObjectType.DYNAMIC_TABLES, "dynamic_table1","create or replace dynamic table db1.schema1.dynamic_table1 (col1 varchar, col2 number)\n as SELECT id, name, COUNT(*) as count FROM db1.schema1.source_table GROUP BY id, name;"),
-                ScriptFactory.getStateScript("db1", "schema1", ScriptObjectType.MASKING_POLICIES, "masking_policy1","create or replace masking policy db1.schema1.masking_policy1 as (val string) returns string -> case when current_role() in ('ANALYST_ROLE', 'PUBLIC') then val else '****' end;"),
-                ScriptFactory.getStateScript("db1", "schema1", ScriptObjectType.FUNCTIONS, "function1","create or replace function db1.schema1.function1(arg1 varchar)\n" +
+                ScriptFactory.getSchemaScript("db1", "schema1", ScriptObjectType.VIEWS, "view1","create or replace view db1.schema1.view1 as select * from table1;"),
+                ScriptFactory.getSchemaScript("db1", "schema1", ScriptObjectType.TABLES, "table1","create or replace table db1.schema1.table1 (col1 varchar, col2 number);"),
+                ScriptFactory.getSchemaScript("db1", "schema1", ScriptObjectType.TABLES, "table2","create or replace transient table db1.schema1.table2 (col1 varchar, col2 number);"),
+                ScriptFactory.getSchemaScript("db1", "schema1", ScriptObjectType.TABLES, "table3","create or replace hybrid table db1.schema1.table3 (col1 varchar, col2 number);"),
+                ScriptFactory.getSchemaScript("db1", "schema1", ScriptObjectType.TABLES, "\"table4\"","create or replace table db1.schema1.\"table4\" (col1 varchar, col2 number);"),
+                ScriptFactory.getSchemaScript("db1", "schema1", ScriptObjectType.DYNAMIC_TABLES, "dynamic_table1","create or replace dynamic table db1.schema1.dynamic_table1 (col1 varchar, col2 number)\n as SELECT id, name, COUNT(*) as count FROM db1.schema1.source_table GROUP BY id, name;"),
+                ScriptFactory.getSchemaScript("db1", "schema1", ScriptObjectType.MASKING_POLICIES, "masking_policy1","create or replace masking policy db1.schema1.masking_policy1 as (val string) returns string -> case when current_role() in ('ANALYST_ROLE', 'PUBLIC') then val else '****' end;"),
+                ScriptFactory.getSchemaScript("db1", "schema1", ScriptObjectType.FUNCTIONS, "function1","create or replace function db1.schema1.function1(arg1 varchar)\n" +
                         "RETURNS VARCHAR(16777216)\n" +
                         "LANGUAGE JAVASCRIPT\n" +
                         "AS '" +
@@ -290,18 +289,15 @@ class SqlTokenizerTest {
     }
 
     @Test
-    void parseScriptTypeView() {
+    void parseSchemaScriptTypeView() {
         String filePath = "db_scripts/db1/schema1/VIEWS/VIEW1.SQL";
         String name = "VIEW1.SQL";
         String scriptType = "VIEWS";
         String content = "CREATE OR REPLACE VIEW db1.schema1.VIEW1 AS SELECT * FROM table1;";
 
-        Set<Script> scripts = SqlTokenizer.parseScript(filePath, name, scriptType, content);
+        SchemaScript script = SqlTokenizer.parseSchemaScript(filePath, name, scriptType, content);
 
-        assertNotNull(scripts, "Scripts should not be null");
-        assertEquals(1, scripts.size(), "There should be exactly one script parsed");
-
-        Script script = scripts.iterator().next();
+        assertNotNull(script, "Scripts should not be null");
         assertEquals("VIEW1", script.getObjectName(), "Object name should be VIEW1");
         assertEquals("db1".toUpperCase(), script.getDatabaseName(), "Database name should be db1");
         assertEquals("schema1".toUpperCase(), script.getSchemaName(), "Schema name should be schema1");
@@ -310,18 +306,16 @@ class SqlTokenizerTest {
     }
 
     @Test
-    void parseScriptTypeFunction() {
+    void parseSchemaScriptTypeFunction() {
         String filePath = "db_scripts/db1/schema1/FUNCTIONS/FUNCTION1.SQL";
         String name = "FUNCTION1.SQL";
         String scriptType = "FUNCTIONS";
         String content = "CREATE OR REPLACE FUNCTION db1.schema1.FUNCTION1() RETURNS STRING LANGUAGE JAVASCRIPT AS 'return \"Hello\";';";
 
-        Set<Script> scripts = SqlTokenizer.parseScript(filePath, name, scriptType, content);
+        SchemaScript script = SqlTokenizer.parseSchemaScript(filePath, name, scriptType, content);
 
-        assertNotNull(scripts, "Scripts should not be null");
-        assertEquals(1, scripts.size(), "There should be exactly one script parsed");
+        assertNotNull(script, "Scripts should not be null");
 
-        Script script = scripts.iterator().next();
         assertEquals("FUNCTION1", script.getObjectName(), "Object name should be FUNCTION1");
         assertEquals("db1".toUpperCase(), script.getDatabaseName(), "Database name should be db1");
         assertEquals("schema1".toUpperCase(), script.getSchemaName(), "Schema name should be schema1");
@@ -330,18 +324,15 @@ class SqlTokenizerTest {
     }
 
     @Test
-    void parseScriptTypeProcedure() {
+    void parseSchemaScriptTypeProcedure() {
         String filePath = "db_scripts/db1/schema1/PROCEDURES/PROCEDURE1.SQL";
         String name = "PROCEDURE1.SQL";
         String scriptType = "PROCEDURES";
         String content = "CREATE OR REPLACE PROCEDURE db1.schema1.PROCEDURE1() RETURNS STRING LANGUAGE JAVASCRIPT AS 'return \"Hello\";';";
 
-        Set<Script> scripts = SqlTokenizer.parseScript(filePath, name, scriptType, content);
+        SchemaScript script = SqlTokenizer.parseSchemaScript(filePath, name, scriptType, content);
 
-        assertNotNull(scripts, "Scripts should not be null");
-        assertEquals(1, scripts.size(), "There should be exactly one script parsed");
-
-        Script script = scripts.iterator().next();
+        assertNotNull(script, "Scripts should not be null");
         assertEquals("PROCEDURE1", script.getObjectName(), "Object name should be PROCEDURE1");
         assertEquals("db1".toUpperCase(), script.getDatabaseName(), "Database name should be db1");
         assertEquals("schema1".toUpperCase(), script.getSchemaName(), "Schema name should be schema1");
@@ -350,18 +341,15 @@ class SqlTokenizerTest {
     }
 
     @Test
-    void parseScriptTypeFileFormat() {
+    void parseSchemaScriptTypeFileFormat() {
         String filePath = "db_scripts/db1/schema1/FILE_FORMATS/FILE_FORMAT1.SQL";
         String name = "FILE_FORMAT1.SQL";
         String scriptType = "FILE_FORMATS";
         String content = "CREATE OR REPLACE FILE FORMAT db1.schema1.FILE_FORMAT1 TYPE = 'CSV';";
 
-        Set<Script> scripts = SqlTokenizer.parseScript(filePath, name, scriptType, content);
+        SchemaScript script = SqlTokenizer.parseSchemaScript(filePath, name, scriptType, content);
 
-        assertNotNull(scripts, "Scripts should not be null");
-        assertEquals(1, scripts.size(), "There should be exactly one script parsed");
-
-        Script script = scripts.iterator().next();
+        assertNotNull(script, "Scripts should not be null");
         assertEquals("FILE_FORMAT1", script.getObjectName(), "Object name should be FILE_FORMAT1");
         assertEquals("db1".toUpperCase(), script.getDatabaseName(), "Database name should be db1");
         assertEquals("schema1".toUpperCase(), script.getSchemaName(), "Schema name should be schema1");
@@ -370,7 +358,7 @@ class SqlTokenizerTest {
     }
 
     @Test
-    void parseScriptTypeTable() {
+    void parseSchemaScriptTypeTable() {
         String filePath = "db_scripts/db1/schema1/TABLES/TABLE1.SQL";
         String name = "TABLE1.SQL";
         String scriptType = "TABLES";
@@ -381,24 +369,24 @@ class SqlTokenizerTest {
 
         String expected_rollback = "drop table db1.schema1.TABLE1;";
         String expected_verify = "select * from db1.schema1.TABLE1;";
-        Set<Script> scripts = SqlTokenizer.parseScript(filePath, name, scriptType, content);
+        SchemaScript schemaScript = SqlTokenizer.parseSchemaScript(filePath, name, scriptType, content);
 
-        assertNotNull(scripts, "Scripts should not be null");
-        assertEquals(1, scripts.size(), "There should be exactly one script parsed");
+        assertNotNull(schemaScript, "Scripts should not be null");
+        assertEquals(1, schemaScript.getMigrations().size(), "There should be exactly one migration script parsed");
 
-        MigrationScript script = (MigrationScript) scripts.iterator().next();
-        assertEquals(0, script.getVersion(), "Version should be 0");
-        assertEquals(expected_rollback, script.getRollback(), "Rollback should match the input content");
-        assertEquals(expected_verify, script.getVerify(), "Verify should match the input content");
-        assertEquals("TABLE1", script.getObjectName(), "Object name should be TABLE1");
-        assertEquals("db1".toUpperCase(), script.getDatabaseName(), "Database name should be db1");
-        assertEquals("schema1".toUpperCase(), script.getSchemaName(), "Schema name should be schema1");
-        assertEquals(ScriptObjectType.TABLES, script.getObjectType(), "Object type should be TABLES");
-        assertEquals(content, script.getContent(), "Script content should match the input content");
+        MigrationScript migrationScript = schemaScript.getMigrations().get(0);
+        assertEquals(0, migrationScript.getVersion(), "Version should be 0");
+        assertEquals(expected_rollback, migrationScript.getRollback(), "Rollback should match the input content");
+        assertEquals(expected_verify, migrationScript.getVerify(), "Verify should match the input content");
+        assertEquals("TABLE1", migrationScript.getObjectName(), "Object name should be TABLE1");
+        assertEquals("db1".toUpperCase(), schemaScript.getDatabaseName(), "Database name should be db1");
+        assertEquals("schema1".toUpperCase(), schemaScript.getSchemaName(), "Schema name should be schema1");
+        assertEquals(ScriptObjectType.TABLES, migrationScript.getObjectType(), "Object type should be TABLES");
+        assertEquals(content, migrationScript.getContent(), "Script content should match the input content");
     }
 
     @Test
-    void parseScriptTypeStream() {
+    void parseSchemaScriptTypeStream() {
         String filePath = "db_scripts/db1/schema1/STREAMS/STREAM1.SQL";
         String name = "STREAM1.SQL";
         String scriptType = "STREAMS";
@@ -410,24 +398,24 @@ class SqlTokenizerTest {
 
         String expected_rollback = "drop stream db1.schema1.STREAM1;";
         String expected_verify = "select * from db1.schema1.STREAM1;";
-        Set<Script> scripts = SqlTokenizer.parseScript(filePath, name, scriptType, content);
+        SchemaScript schemaScript = SqlTokenizer.parseSchemaScript(filePath, name, scriptType, content);
 
-        assertNotNull(scripts, "Scripts should not be null");
-        assertEquals(1, scripts.size(), "There should be exactly one script parsed");
+        assertNotNull(schemaScript, "Scripts should not be null");
+        assertEquals(1, schemaScript.getMigrations().size(), "There should be exactly one migration script parsed");
 
-        MigrationScript script = (MigrationScript) scripts.iterator().next();
-        assertEquals(0, script.getVersion(), "Version should be 0");
-        assertEquals(expected_rollback, script.getRollback(), "Rollback should match the input content");
-        assertEquals(expected_verify, script.getVerify(), "Verify should match the input content");
-        assertEquals("STREAM1", script.getObjectName(), "Object name should be STREAM1");
-        assertEquals("db1".toUpperCase(), script.getDatabaseName(), "Database name should be db1");
-        assertEquals("schema1".toUpperCase(), script.getSchemaName(), "Schema name should be schema1");
-        assertEquals(ScriptObjectType.STREAMS, script.getObjectType(), "Object type should be STREAMS");
-        assertEquals(content, script.getContent(), "Script content should match the input content");
+        MigrationScript migrationScript = schemaScript.getMigrations().get(0);
+        assertEquals(0, migrationScript.getVersion(), "Version should be 0");
+        assertEquals(expected_rollback, migrationScript.getRollback(), "Rollback should match the input content");
+        assertEquals(expected_verify, migrationScript.getVerify(), "Verify should match the input content");
+        assertEquals("STREAM1", migrationScript.getObjectName(), "Object name should be STREAM1");
+        assertEquals("db1".toUpperCase(), schemaScript.getDatabaseName(), "Database name should be db1");
+        assertEquals("schema1".toUpperCase(), schemaScript.getSchemaName(), "Schema name should be schema1");
+        assertEquals(ScriptObjectType.STREAMS, migrationScript.getObjectType(), "Object type should be STREAMS");
+        assertEquals(content, migrationScript.getContent(), "Script content should match the input content");
     }
 
     @Test
-    void parseScriptTypeSequence() {
+    void parseSchemaScriptTypeSequence() {
         String filePath = "db_scripts/db1/schema1/SEQUENCES/SEQUENCE1.SQL";
         String name = "SEQUENCE1.SQL";
         String scriptType = "SEQUENCES";
@@ -438,24 +426,24 @@ class SqlTokenizerTest {
 
         String expected_rollback = "drop sequence db1.schema1.SEQUENCE1;";
         String expected_verify = "select * from db1.schema1.SEQUENCE1;";
-        Set<Script> scripts = SqlTokenizer.parseScript(filePath, name, scriptType, content);
+        SchemaScript schemaScript = SqlTokenizer.parseSchemaScript(filePath, name, scriptType, content);
 
-        assertNotNull(scripts, "Scripts should not be null");
-        assertEquals(1, scripts.size(), "There should be exactly one script parsed");
+        assertNotNull(schemaScript, "Scripts should not be null");
+        assertEquals(1, schemaScript.getMigrations().size(), "There should be exactly one migration script parsed");
 
-        MigrationScript script = (MigrationScript) scripts.iterator().next();
+        MigrationScript script = schemaScript.getMigrations().get(0);
         assertEquals(0, script.getVersion(), "Version should be 0");
         assertEquals(expected_rollback, script.getRollback(), "Rollback should match the input content");
         assertEquals(expected_verify, script.getVerify(), "Verify should match the input content");
         assertEquals("SEQUENCE1", script.getObjectName(), "Object name should be SEQUENCE1");
-        assertEquals("db1".toUpperCase(), script.getDatabaseName(), "Database name should be db1");
-        assertEquals("schema1".toUpperCase(), script.getSchemaName(), "Schema name should be schema1");
+        assertEquals("db1".toUpperCase(), schemaScript.getDatabaseName(), "Database name should be db1");
+        assertEquals("schema1".toUpperCase(), schemaScript.getSchemaName(), "Schema name should be schema1");
         assertEquals(ScriptObjectType.SEQUENCES, script.getObjectType(), "Object type should be SEQUENCES");
         assertEquals(content, script.getContent(), "Script content should match the input content");
     }
 
     @Test
-    void parseScriptTypeStage() {
+    void parseSchemaScriptTypeStage() {
         String filePath = "db_scripts/db1/schema1/STAGES/STAGE1.SQL";
         String name = "STAGE1.SQL";
         String scriptType = "STAGES";
@@ -466,24 +454,24 @@ class SqlTokenizerTest {
 
         String expected_rollback = "drop stage db1.schema1.STAGE1;";
         String expected_verify = "list @db1.schema1.STAGE1;";
-        Set<Script> scripts = SqlTokenizer.parseScript(filePath, name, scriptType, content);
+        SchemaScript schemaScript = SqlTokenizer.parseSchemaScript(filePath, name, scriptType, content);
 
-        assertNotNull(scripts, "Scripts should not be null");
-        assertEquals(1, scripts.size(), "There should be exactly one script parsed");
+        assertNotNull(schemaScript, "Scripts should not be null");
+        assertEquals(1, schemaScript.getMigrations().size(), "There should be exactly one migration script parsed");
 
-        MigrationScript script = (MigrationScript) scripts.iterator().next();
+        MigrationScript script = schemaScript.getMigrations().get(0);
         assertEquals(0, script.getVersion(), "Version should be 0");
         assertEquals(expected_rollback, script.getRollback(), "Rollback should match the input content");
         assertEquals(expected_verify, script.getVerify(), "Verify should match the input content");
         assertEquals("STAGE1", script.getObjectName(), "Object name should be STAGE1");
-        assertEquals("db1".toUpperCase(), script.getDatabaseName(), "Database name should be db1");
-        assertEquals("schema1".toUpperCase(), script.getSchemaName(), "Schema name should be schema1");
+        assertEquals("db1".toUpperCase(), schemaScript.getDatabaseName(), "Database name should be db1");
+        assertEquals("schema1".toUpperCase(), schemaScript.getSchemaName(), "Schema name should be schema1");
         assertEquals(ScriptObjectType.STAGES, script.getObjectType(), "Object type should be STAGES");
         assertEquals(content, script.getContent(), "Script content should match the input content");
     }
 
     @Test
-    void parseScriptTypeTask() {
+    void parseSchemaScriptTypeTask() {
         String filePath = "db_scripts/db1/schema1/TASKS/TASK1.SQL";
         String name = "TASK1.SQL";
         String scriptType = "TASKS";
@@ -494,24 +482,24 @@ class SqlTokenizerTest {
 
         String expected_rollback = "drop task db1.schema1.TASK1;";
         String expected_verify = "select * from db1.schema1.TASK1;";
-        Set<Script> scripts = SqlTokenizer.parseScript(filePath, name, scriptType, content);
+        SchemaScript schemaScript = SqlTokenizer.parseSchemaScript(filePath, name, scriptType, content);
 
-        assertNotNull(scripts, "Scripts should not be null");
-        assertEquals(1, scripts.size(), "There should be exactly one script parsed");
+        assertNotNull(schemaScript, "Scripts should not be null");
+        assertEquals(1, schemaScript.getMigrations().size(), "There should be exactly one migration script parsed");
 
-        MigrationScript script = (MigrationScript) scripts.iterator().next();
+        MigrationScript script = schemaScript.getMigrations().get(0);
         assertEquals(0, script.getVersion(), "Version should be 0");
         assertEquals(expected_rollback, script.getRollback(), "Rollback should match the input content");
         assertEquals(expected_verify, script.getVerify(), "Verify should match the input content");
         assertEquals("TASK1", script.getObjectName(), "Object name should be TASK1");
-        assertEquals("db1".toUpperCase(), script.getDatabaseName(), "Database name should be db1");
-        assertEquals("schema1".toUpperCase(), script.getSchemaName(), "Schema name should be schema1");
+        assertEquals("db1".toUpperCase(), schemaScript.getDatabaseName(), "Database name should be db1");
+        assertEquals("schema1".toUpperCase(), schemaScript.getSchemaName(), "Schema name should be schema1");
         assertEquals(ScriptObjectType.TASKS, script.getObjectType(), "Object type should be TASKS");
         assertEquals(content, script.getContent(), "Script content should match the input content");
     }
 
     @Test
-    void parseScriptTypeStreamlit() {
+    void parseSchemaScriptTypeStreamlit() {
         String filePath = "db_scripts/db1/schema1/STREAMLITS/STREAMLIT1.SQL";
         String name = "STREAMLIT1.SQL";
         String scriptType = "STREAMLITS";
@@ -520,12 +508,9 @@ class SqlTokenizerTest {
                 "\tmain_file='/streamlit_app.py'\n" +
                 "\tquery_warehouse='${MY_WAREHOUSE}';";
 
-        Set<Script> scripts = SqlTokenizer.parseScript(filePath, name, scriptType, content);
+        SchemaScript script = SqlTokenizer.parseSchemaScript(filePath, name, scriptType, content);
 
-        assertNotNull(scripts, "Scripts should not be null");
-        assertEquals(1, scripts.size(), "There should be exactly one script parsed");
-
-        Script script = scripts.iterator().next();
+        assertNotNull(script, "Scripts should not be null");
         assertEquals("STREAMLIT1", script.getObjectName(), "Object name should be STREAMLIT1");
         assertEquals("db1".toUpperCase(), script.getDatabaseName(), "Database name should be db1");
         assertEquals("schema1".toUpperCase(), script.getSchemaName(), "Schema name should be schema1");
@@ -535,7 +520,7 @@ class SqlTokenizerTest {
     }
 
     @Test
-    void parseScriptTypePipe() {
+    void parseSchemaScriptTypePipe() {
         String filePath = "db_scripts/db1/schema1/PIPES/PIPE1.SQL";
         String name = "PIPE1.SQL";
         String scriptType = "PIPES";
@@ -545,13 +530,10 @@ class SqlTokenizerTest {
                          "  AS COPY INTO db1.schema1.my_table\n" +
                          "  FROM @my_stage/file_prefix\n" +
                          "  FILE_FORMAT = (TYPE = 'CSV');";
-    
-        Set<Script> scripts = SqlTokenizer.parseScript(filePath, name, scriptType, content);
-    
-        assertNotNull(scripts, "Scripts should not be null");
-        assertEquals(1, scripts.size(), "There should be exactly one script parsed");
-    
-        Script script = scripts.iterator().next();
+
+        SchemaScript script = SqlTokenizer.parseSchemaScript(filePath, name, scriptType, content);
+
+        assertNotNull(script, "Scripts should not be null");
         assertEquals("PIPE1", script.getObjectName(), "Object name should be PIPE1");
         assertEquals("db1".toUpperCase(), script.getDatabaseName(), "Database name should be db1");
         assertEquals("schema1".toUpperCase(), script.getSchemaName(), "Schema name should be schema1");
@@ -560,7 +542,7 @@ class SqlTokenizerTest {
     }
 
     @Test
-    void parseScriptTypeDynamicTable() {
+    void parseSchemaScriptTypeDynamicTable() {
         String filePath = "db_scripts/db1/schema1/DYNAMIC_TABLES/DYNAMIC_TABLE1.SQL";
         String name = "DYNAMIC_TABLE1.SQL";
         String scriptType = "DYNAMIC_TABLES";
@@ -574,35 +556,32 @@ class SqlTokenizerTest {
 
         String expected_rollback = "drop dynamic table db1.schema1.DYNAMIC_TABLE1;";
         String expected_verify = "select * from db1.schema1.DYNAMIC_TABLE1;";
-        Set<Script> scripts = SqlTokenizer.parseScript(filePath, name, scriptType, content);
+        SchemaScript schemaScript = SqlTokenizer.parseSchemaScript(filePath, name, scriptType, content);
 
-        assertNotNull(scripts, "Scripts should not be null");
-        assertEquals(1, scripts.size(), "There should be exactly one script parsed");
+        assertNotNull(schemaScript, "Scripts should not be null");
+        assertEquals(1, schemaScript.getMigrations().size(), "There should be exactly one migration script parsed");
 
-        MigrationScript script = (MigrationScript) scripts.iterator().next();
+        MigrationScript script = schemaScript.getMigrations().get(0);
         assertEquals(0, script.getVersion(), "Version should be 0");
         assertEquals(expected_rollback, script.getRollback(), "Rollback should match the input content");
         assertEquals(expected_verify, script.getVerify(), "Verify should match the input content");
         assertEquals("DYNAMIC_TABLE1", script.getObjectName(), "Object name should be DYNAMIC_TABLE1");
-        assertEquals("db1".toUpperCase(), script.getDatabaseName(), "Database name should be db1");
-        assertEquals("schema1".toUpperCase(), script.getSchemaName(), "Schema name should be schema1");
+        assertEquals("db1".toUpperCase(), schemaScript.getDatabaseName(), "Database name should be db1");
+        assertEquals("schema1".toUpperCase(), schemaScript.getSchemaName(), "Schema name should be schema1");
         assertEquals(ScriptObjectType.DYNAMIC_TABLES, script.getObjectType(), "Object type should be DYNAMIC_TABLES");
         assertEquals(content, script.getContent(), "Script content should match the input content");
     }
 
     @Test
-    void parseScriptTypeMaskingPolicy() {
+    void parseSchemaScriptTypeMaskingPolicy() {
         String filePath = "db_scripts/db1/schema1/MASKING_POLICIES/EMAIL_MASK.SQL";
         String name = "EMAIL_MASK.SQL";
         String scriptType = "MASKING_POLICIES";
         String content = "CREATE OR REPLACE MASKING POLICY db1.schema1.EMAIL_MASK AS (val STRING) RETURNS STRING -> CASE WHEN CURRENT_ROLE() IN ('ADMIN') THEN val ELSE '***MASKED***' END;";
 
-        Set<Script> scripts = SqlTokenizer.parseScript(filePath, name, scriptType, content);
+        SchemaScript script = SqlTokenizer.parseSchemaScript(filePath, name, scriptType, content);
 
-        assertNotNull(scripts, "Scripts should not be null");
-        assertEquals(1, scripts.size(), "There should be exactly one script parsed");
-
-        Script script = scripts.iterator().next();
+        assertNotNull(script, "Scripts should not be null");
         assertEquals("EMAIL_MASK", script.getObjectName(), "Object name should be EMAIL_MASK");
         assertEquals("db1".toUpperCase(), script.getDatabaseName(), "Database name should be db1");
         assertEquals("schema1".toUpperCase(), script.getSchemaName(), "Schema name should be schema1");
@@ -611,14 +590,14 @@ class SqlTokenizerTest {
     }
 
     @Test
-    void parseScriptUnsupportedObjectType() {
+    void parseSchemaScriptUnsupportedObjectType() {
         String filePath = "db_scripts/db1/schema1/UNKNOWN/OBJECT1.SQL";
         String name = "OBJECT1.SQL";
         String scriptType = "UNKNOWN_TYPE";
         String content = "CREATE OR REPLACE UNKNOWN db1.schema1.OBJECT1;";
 
         RuntimeException exception = assertThrows(RuntimeException.class, () -> {
-            SqlTokenizer.parseScript(filePath, name, scriptType, content);
+            SqlTokenizer.parseSchemaScript(filePath, name, scriptType, content);
         }, "Should throw RuntimeException for unsupported object type");
 
         assertEquals("Unknown script type of directory: UNKNOWN_TYPE", exception.getMessage(),
@@ -636,5 +615,317 @@ class SqlTokenizerTest {
         assertEquals("Unknown object type found in DDL: UNKNOWN", exception.getMessage(),
                 "Exception message should indicate unsupported DDL statement");
     }
+
+    // ===== Account-Level Object Tests =====
+
+    @Test
+    void parseAccountScriptTypeDatabase() {
+        String filePath = "db_scripts/ACCOUNT/DATABASES/MY_DATABASE.SQL";
+        String name = "MY_DATABASE.SQL";
+        String scriptType = "DATABASES";
+        String content = "---version: 0, author: admin\n" +
+                "CREATE OR REPLACE DATABASE MY_DATABASE;\n" +
+                "---rollback: DROP DATABASE IF EXISTS MY_DATABASE;";
+
+        AccountScript script = SqlTokenizer.parseAccountScript(filePath, name, scriptType, content);
+
+        assertNotNull(script, "Script should not be null");
+        assertEquals("MY_DATABASE", script.getObjectName(), "Object name should be MY_DATABASE");
+        assertEquals(ScriptObjectType.DATABASES, script.getObjectType(), "Object type should be DATABASES");
+        assertEquals(1, script.getMigrations().size(), "There should be exactly one migration script parsed");
+
+        MigrationScript migration = script.getMigrations().get(0);
+        assertEquals(0, migration.getVersion(), "Version should be 0");
+        assertEquals("admin", migration.getAuthor(), "Author should be admin");
+        assertEquals("DROP DATABASE IF EXISTS MY_DATABASE;", migration.getRollback(), "Rollback should match");
+    }
+
+    @Test
+    void parseAccountScriptTypeSchema() {
+        String filePath = "db_scripts/ACCOUNT/SCHEMAS/MY_DATABASE.MY_SCHEMA.SQL";
+        String name = "MY_DATABASE.MY_SCHEMA.SQL";
+        String scriptType = "SCHEMAS";
+        String content = "---version: 0, author: admin\n" +
+                "CREATE OR REPLACE SCHEMA MY_DATABASE.MY_SCHEMA;\n" +
+                "---rollback: DROP SCHEMA IF EXISTS MY_DATABASE.MY_SCHEMA;";
+
+        AccountScript script = SqlTokenizer.parseAccountScript(filePath, name, scriptType, content);
+
+        assertNotNull(script, "Script should not be null");
+        assertEquals("MY_DATABASE.MY_SCHEMA", script.getObjectName(), "Object name should be MY_DATABASE.MY_SCHEMA");
+        assertEquals(ScriptObjectType.SCHEMAS, script.getObjectType(), "Object type should be SCHEMAS");
+        assertEquals(1, script.getMigrations().size(), "There should be exactly one migration script parsed");
+
+        MigrationScript migration = script.getMigrations().get(0);
+        assertEquals(0, migration.getVersion(), "Version should be 0");
+        assertEquals("admin", migration.getAuthor(), "Author should be admin");
+        assertEquals("DROP SCHEMA IF EXISTS MY_DATABASE.MY_SCHEMA;", migration.getRollback(), "Rollback should match");
+    }
+
+    @Test
+    void parseAccountScriptTypeRole() {
+        String filePath = "db_scripts/ACCOUNT/ROLES/ANALYST.SQL";
+        String name = "ANALYST.SQL";
+        String scriptType = "ROLES";
+        String content = "---version: 0, author: admin\n" +
+                "CREATE OR REPLACE ROLE ANALYST;\n" +
+                "---rollback: DROP ROLE IF EXISTS ANALYST;";
+
+        AccountScript script = SqlTokenizer.parseAccountScript(filePath, name, scriptType, content);
+
+        assertNotNull(script, "Script should not be null");
+        assertEquals("ANALYST", script.getObjectName(), "Object name should be ANALYST");
+        assertEquals(ScriptObjectType.ROLES, script.getObjectType(), "Object type should be ROLES");
+        assertEquals(1, script.getMigrations().size(), "There should be exactly one migration script parsed");
+
+        MigrationScript migration = script.getMigrations().get(0);
+        assertEquals(0, migration.getVersion(), "Version should be 0");
+        assertEquals("admin", migration.getAuthor(), "Author should be admin");
+        assertEquals("DROP ROLE IF EXISTS ANALYST;", migration.getRollback(), "Rollback should match");
+    }
+
+    @Test
+    void parseAccountScriptTypeWarehouse() {
+        String filePath = "db_scripts/ACCOUNT/WAREHOUSES/COMPUTE_WH.SQL";
+        String name = "COMPUTE_WH.SQL";
+        String scriptType = "WAREHOUSES";
+        String content = "CREATE OR REPLACE WAREHOUSE COMPUTE_WH WAREHOUSE_SIZE = 'MEDIUM';";
+
+        AccountScript script = SqlTokenizer.parseAccountScript(filePath, name, scriptType, content);
+
+        assertNotNull(script, "Script should not be null");
+        assertEquals("COMPUTE_WH", script.getObjectName(), "Object name should be COMPUTE_WH");
+        assertEquals(ScriptObjectType.WAREHOUSES, script.getObjectType(), "Object type should be WAREHOUSES");
+        assertEquals(content, script.getContent(), "Script content should match the input content");
+    }
+
+    @Test
+    void parseAccountScriptTypeResourceMonitor() {
+        String filePath = "db_scripts/ACCOUNT/RESOURCE_MONITORS/MONITOR1.SQL";
+        String name = "MONITOR1.SQL";
+        String scriptType = "RESOURCE_MONITORS";
+        String content = "CREATE OR REPLACE RESOURCE MONITOR MONITOR1 CREDIT_QUOTA = 100 TRIGGERS ON 80 PERCENT DO NOTIFY;";
+
+        AccountScript script = SqlTokenizer.parseAccountScript(filePath, name, scriptType, content);
+
+        assertNotNull(script, "Script should not be null");
+        assertEquals("MONITOR1", script.getObjectName(), "Object name should be MONITOR1");
+        assertEquals(ScriptObjectType.RESOURCE_MONITORS, script.getObjectType(), "Object type should be RESOURCE_MONITORS");
+        assertEquals(content, script.getContent(), "Script content should match the input content");
+    }
+
+    @Test
+    void parseAccountScriptTypeNetworkPolicy() {
+        String filePath = "db_scripts/ACCOUNT/NETWORK_POLICIES/POLICY1.SQL";
+        String name = "POLICY1.SQL";
+        String scriptType = "NETWORK_POLICIES";
+        String content = "CREATE OR REPLACE NETWORK POLICY POLICY1 ALLOWED_NETWORK_RULE_LIST = ('rule1') BLOCKED_NETWORK_RULE_LIST = ();";
+
+        AccountScript script = SqlTokenizer.parseAccountScript(filePath, name, scriptType, content);
+
+        assertNotNull(script, "Script should not be null");
+        assertEquals("POLICY1", script.getObjectName(), "Object name should be POLICY1");
+        assertEquals(ScriptObjectType.NETWORK_POLICIES, script.getObjectType(), "Object type should be NETWORK_POLICIES");
+        assertEquals(content, script.getContent(), "Script content should match the input content");
+    }
+
+    @Test
+    void parseAccountScriptTypeSessionPolicy() {
+        String filePath = "db_scripts/ACCOUNT/SESSION_POLICIES/SESSION_POLICY1.SQL";
+        String name = "SESSION_POLICY1.SQL";
+        String scriptType = "SESSION_POLICIES";
+        String content = "CREATE OR REPLACE SESSION POLICY SESSION_POLICY1 SESSION_IDLE_TIMEOUT_MINS = 30;";
+
+        AccountScript script = SqlTokenizer.parseAccountScript(filePath, name, scriptType, content);
+
+        assertNotNull(script, "Script should not be null");
+        assertEquals("SESSION_POLICY1", script.getObjectName(), "Object name should be SESSION_POLICY1");
+        assertEquals(ScriptObjectType.SESSION_POLICIES, script.getObjectType(), "Object type should be SESSION_POLICIES");
+        assertEquals(content, script.getContent(), "Script content should match the input content");
+    }
+
+    @Test
+    void parseAccountScriptTypePasswordPolicy() {
+        String filePath = "db_scripts/ACCOUNT/PASSWORD_POLICIES/PWD_POLICY1.SQL";
+        String name = "PWD_POLICY1.SQL";
+        String scriptType = "PASSWORD_POLICIES";
+        String content = "CREATE OR REPLACE PASSWORD POLICY PWD_POLICY1 PASSWORD_MIN_LENGTH = 12 PASSWORD_MIN_UPPER_CASE_CHARS = 2;";
+
+        AccountScript script = SqlTokenizer.parseAccountScript(filePath, name, scriptType, content);
+
+        assertNotNull(script, "Script should not be null");
+        assertEquals("PWD_POLICY1", script.getObjectName(), "Object name should be PWD_POLICY1");
+        assertEquals(ScriptObjectType.PASSWORD_POLICIES, script.getObjectType(), "Object type should be PASSWORD_POLICIES");
+        assertEquals(content, script.getContent(), "Script content should match the input content");
+    }
+
+    @Test
+    void parseAccountScriptTypeAuthenticationPolicy() {
+        String filePath = "db_scripts/ACCOUNT/AUTHENTICATION_POLICIES/AUTH_POLICY1.SQL";
+        String name = "AUTH_POLICY1.SQL";
+        String scriptType = "AUTHENTICATION_POLICIES";
+        String content = "CREATE OR REPLACE AUTHENTICATION POLICY AUTH_POLICY1 AUTHENTICATION_METHODS = ('JWT') MFA_AUTHENTICATION_METHODS = ('PASSWORD', 'SAML');";
+
+        AccountScript script = SqlTokenizer.parseAccountScript(filePath, name, scriptType, content);
+
+        assertNotNull(script, "Script should not be null");
+        assertEquals("AUTH_POLICY1", script.getObjectName(), "Object name should be AUTH_POLICY1");
+        assertEquals(ScriptObjectType.AUTHENTICATION_POLICIES, script.getObjectType(), "Object type should be AUTHENTICATION_POLICIES");
+        assertEquals(content, script.getContent(), "Script content should match the input content");
+    }
+
+    @Test
+    void parseAccountScriptTypeApiIntegration() {
+        String filePath = "db_scripts/ACCOUNT/API_INTEGRATIONS/API_INT1.SQL";
+        String name = "API_INT1.SQL";
+        String scriptType = "API_INTEGRATIONS";
+        String content = "CREATE OR REPLACE API INTEGRATION API_INT1 API_PROVIDER = 'aws_api_gateway' API_AWS_ROLE_ARN = 'arn:aws:iam::123456789012:role/my_role';";
+
+        AccountScript script = SqlTokenizer.parseAccountScript(filePath, name, scriptType, content);
+
+        assertNotNull(script, "Script should not be null");
+        assertEquals("API_INT1", script.getObjectName(), "Object name should be API_INT1");
+        assertEquals(ScriptObjectType.API_INTEGRATIONS, script.getObjectType(), "Object type should be API_INTEGRATIONS");
+        assertEquals(content, script.getContent(), "Script content should match the input content");
+    }
+
+    @Test
+    void parseAccountScriptTypeNotificationIntegration() {
+        String filePath = "db_scripts/ACCOUNT/NOTIFICATION_INTEGRATIONS/NOTIF_INT1.SQL";
+        String name = "NOTIF_INT1.SQL";
+        String scriptType = "NOTIFICATION_INTEGRATIONS";
+        String content = "CREATE OR REPLACE NOTIFICATION INTEGRATION NOTIF_INT1 TYPE = 'EMAIL' ENABLED = TRUE;";
+
+        AccountScript script = SqlTokenizer.parseAccountScript(filePath, name, scriptType, content);
+
+        assertNotNull(script, "Script should not be null");
+        assertEquals("NOTIF_INT1", script.getObjectName(), "Object name should be NOTIF_INT1");
+        assertEquals(ScriptObjectType.NOTIFICATION_INTEGRATIONS, script.getObjectType(), "Object type should be NOTIFICATION_INTEGRATIONS");
+        assertEquals(content, script.getContent(), "Script content should match the input content");
+    }
+
+    @Test
+    void parseAccountScriptTypeSecurityIntegration() {
+        String filePath = "db_scripts/ACCOUNT/SECURITY_INTEGRATIONS/SEC_INT1.SQL";
+        String name = "SEC_INT1.SQL";
+        String scriptType = "SECURITY_INTEGRATIONS";
+        String content = "CREATE OR REPLACE SECURITY INTEGRATION SEC_INT1 TYPE = 'SAML2' ENABLED = TRUE SAML2_LOGIN_URL = 'https://example.com/login';";
+
+        AccountScript script = SqlTokenizer.parseAccountScript(filePath, name, scriptType, content);
+
+        assertNotNull(script, "Script should not be null");
+        assertEquals("SEC_INT1", script.getObjectName(), "Object name should be SEC_INT1");
+        assertEquals(ScriptObjectType.SECURITY_INTEGRATIONS, script.getObjectType(), "Object type should be SECURITY_INTEGRATIONS");
+        assertEquals(content, script.getContent(), "Script content should match the input content");
+    }
+
+    @Test
+    void parseAccountScriptTypeStorageIntegration() {
+        String filePath = "db_scripts/ACCOUNT/STORAGE_INTEGRATIONS/STORAGE_INT1.SQL";
+        String name = "STORAGE_INT1.SQL";
+        String scriptType = "STORAGE_INTEGRATIONS";
+        String content = "CREATE OR REPLACE STORAGE INTEGRATION STORAGE_INT1 TYPE = 'EXTERNAL_STAGE' STORAGE_PROVIDER = 'S3' STORAGE_AWS_ROLE_ARN = 'arn:aws:iam::123456789012:role/my_role';";
+
+        AccountScript script = SqlTokenizer.parseAccountScript(filePath, name, scriptType, content);
+
+        assertNotNull(script, "Script should not be null");
+        assertEquals("STORAGE_INT1", script.getObjectName(), "Object name should be STORAGE_INT1");
+        assertEquals(ScriptObjectType.STORAGE_INTEGRATIONS, script.getObjectType(), "Object type should be STORAGE_INTEGRATIONS");
+        assertEquals(content, script.getContent(), "Script content should match the input content");
+    }
+
+    // ===== Account-Level Multi-Version Migration Tests =====
+
+    @Test
+    void parseAccountScriptTypeDatabaseMultipleMigrations() {
+        String filePath = "db_scripts/ACCOUNT/DATABASES/MY_DATABASE.SQL";
+        String name = "MY_DATABASE.SQL";
+        String scriptType = "DATABASES";
+        String content = "---version: 0, author: admin\n" +
+                "CREATE OR REPLACE DATABASE MY_DATABASE;\n" +
+                "---rollback: DROP DATABASE IF EXISTS MY_DATABASE;\n" +
+                "---version: 1, author: user1\n" +
+                "ALTER DATABASE MY_DATABASE SET DATA_RETENTION_TIME_IN_DAYS = 7;";
+
+        AccountScript script = SqlTokenizer.parseAccountScript(filePath, name, scriptType, content);
+
+        assertNotNull(script, "Script should not be null");
+        assertEquals("MY_DATABASE", script.getObjectName(), "Object name should be MY_DATABASE");
+        assertEquals(ScriptObjectType.DATABASES, script.getObjectType(), "Object type should be DATABASES");
+        assertEquals(2, script.getMigrations().size(), "There should be exactly two migration scripts parsed");
+
+        MigrationScript firstMigration = script.getMigrations().get(0);
+        assertEquals(0, firstMigration.getVersion(), "First version should be 0");
+        assertEquals("admin", firstMigration.getAuthor(), "First author should be admin");
+        assertEquals("DROP DATABASE IF EXISTS MY_DATABASE;", firstMigration.getRollback(), "First rollback should match");
+
+        MigrationScript secondMigration = script.getMigrations().get(1);
+        assertEquals(1, secondMigration.getVersion(), "Second version should be 1");
+        assertEquals("user1", secondMigration.getAuthor(), "Second author should be user1");
+    }
+
+    @Test
+    void parseAccountScriptTypeSchemaMultipleMigrations() {
+        String filePath = "db_scripts/ACCOUNT/SCHEMAS/MY_DATABASE.MY_SCHEMA.SQL";
+        String name = "MY_DATABASE.MY_SCHEMA.SQL";
+        String scriptType = "SCHEMAS";
+        String content = "---version: 0, author: admin\n" +
+                "CREATE OR REPLACE SCHEMA MY_DATABASE.MY_SCHEMA;\n" +
+                "---rollback: DROP SCHEMA IF EXISTS MY_DATABASE.MY_SCHEMA;\n" +
+                "---version: 1, author: user1\n" +
+                "ALTER SCHEMA MY_DATABASE.MY_SCHEMA SET DATA_RETENTION_TIME_IN_DAYS = 5;";
+
+        AccountScript script = SqlTokenizer.parseAccountScript(filePath, name, scriptType, content);
+
+        assertNotNull(script, "Script should not be null");
+        assertEquals("MY_DATABASE.MY_SCHEMA", script.getObjectName(), "Object name should be MY_DATABASE.MY_SCHEMA");
+        assertEquals(ScriptObjectType.SCHEMAS, script.getObjectType(), "Object type should be SCHEMAS");
+        assertEquals(2, script.getMigrations().size(), "There should be exactly two migration scripts parsed");
+
+        MigrationScript firstMigration = script.getMigrations().get(0);
+        assertEquals(0, firstMigration.getVersion(), "First version should be 0");
+        assertEquals("admin", firstMigration.getAuthor(), "First author should be admin");
+        assertEquals("DROP SCHEMA IF EXISTS MY_DATABASE.MY_SCHEMA;", firstMigration.getRollback(), "First rollback should match");
+
+        MigrationScript secondMigration = script.getMigrations().get(1);
+        assertEquals(1, secondMigration.getVersion(), "Second version should be 1");
+        assertEquals("user1", secondMigration.getAuthor(), "Second author should be user1");
+    }
+
+    @Test
+    void parseAccountScriptTypeRoleMultipleMigrations() {
+        String filePath = "db_scripts/ACCOUNT/ROLES/ANALYST.SQL";
+        String name = "ANALYST.SQL";
+        String scriptType = "ROLES";
+        String content = "---version: 0, author: admin\n" +
+                "CREATE OR REPLACE ROLE ANALYST;\n" +
+                "---rollback: DROP ROLE IF EXISTS ANALYST;\n" +
+                "---version: 1, author: admin\n" +
+                "GRANT ROLE ANALYST TO ROLE ACCOUNTADMIN;\n" +
+                "---rollback: REVOKE ROLE ANALYST FROM ROLE ACCOUNTADMIN;\n" +
+                "---version: 2, author: user2\n" +
+                "GRANT CREATE DATABASE ON ACCOUNT TO ROLE ANALYST;";
+
+        AccountScript script = SqlTokenizer.parseAccountScript(filePath, name, scriptType, content);
+
+        assertNotNull(script, "Script should not be null");
+        assertEquals("ANALYST", script.getObjectName(), "Object name should be ANALYST");
+        assertEquals(ScriptObjectType.ROLES, script.getObjectType(), "Object type should be ROLES");
+        assertEquals(3, script.getMigrations().size(), "There should be exactly three migration scripts parsed");
+
+        MigrationScript firstMigration = script.getMigrations().get(0);
+        assertEquals(0, firstMigration.getVersion(), "First version should be 0");
+        assertEquals("admin", firstMigration.getAuthor(), "First author should be admin");
+
+        MigrationScript secondMigration = script.getMigrations().get(1);
+        assertEquals(1, secondMigration.getVersion(), "Second version should be 1");
+        assertEquals("REVOKE ROLE ANALYST FROM ROLE ACCOUNTADMIN;", secondMigration.getRollback(), "Second rollback should match");
+
+        MigrationScript thirdMigration = script.getMigrations().get(2);
+        assertEquals(2, thirdMigration.getVersion(), "Third version should be 2");
+        assertEquals("user2", thirdMigration.getAuthor(), "Third author should be user2");
+    }
+
+
 
 }

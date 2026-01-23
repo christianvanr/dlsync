@@ -25,31 +25,21 @@ public class ScriptRepo {
     public final String DEPENDENCY_LINEAGE_TABLE_NAME = "DL_SYNC_DEPENDENCY_LINEAGE";
 
 
-    public ScriptRepo(Properties connectionProperties) {
-        log.debug("Repo initialized with the following properties: {}", connectionProperties);
+    public ScriptRepo(Connection connection, Properties connectionProperties) {
+        this.connection = connection;
         this.connectionProperties = connectionProperties;
-        try {
-            openConnection();
-            ResultSet resultSet = connection.createStatement().executeQuery("select current_database(), current_schema();");
-            resultSet.next();
-            log.info("Using database [{}] and schema [{}] for dlsync activities.", resultSet.getString(1), resultSet.getString(2));
-            initScriptTables();
-        } catch (SQLException e) {
-            log.error("Error while initializing the script repo: {} cause {}", e.getMessage(), e.getCause());
-            throw new RuntimeException(e);
-        }
+        log.debug("Repo initialized with connection and properties");
     }
 
-
-    private void openConnection() throws SQLException {
-        String jdbcUrl = "jdbc:snowflake://" + connectionProperties.getProperty("account") + ".snowflakecomputing.com/";
-        connectionProperties.remove("account");
-        log.debug("Connection opened with properties: {}", connectionProperties);
-        connection = DriverManager.getConnection(jdbcUrl, connectionProperties);
+    public void init() throws SQLException {
+        initScriptTables();
     }
 
     private void initScriptTables() throws SQLException {
         ////varchar OBJECT_NAME, varchar SCRIPT_HASH, varchar created_by, timestamp created_ts, varchar updated_by, timestamp updated_ts;
+        ResultSet resultSet = connection.createStatement().executeQuery("select current_database(), current_schema();");
+        resultSet.next();
+        log.info("Using database [{}] and schema [{}] for dlsync activities.", resultSet.getString(1), resultSet.getString(2));
         log.debug("Checking for deployment tables");
         try {
             String query = "SELECT * FROM " + CHANGE_SYNC_TABLE_NAME + " LIMIT 1;";
@@ -229,15 +219,8 @@ public class ScriptRepo {
         }
 
     }
-    public List<Script> getScriptsInSchema(String schema) throws SQLException {
-        List<Script> scripts = new ArrayList<>();
-        for(ScriptObjectType type: ScriptObjectType.values()) {
-            scripts.addAll(getScriptsInSchema(schema, type));
-        }
-        return scripts;
-    }
 
-    public List<Script> getAllScriptsInSchema(String schema) throws SQLException {
+    public List<SchemaScript> getAllScriptsInSchema(String schema) throws SQLException {
         log.info("Getting all scripts in schema: {}", schema);
         String sql = String.format("SELECT GET_DDL('SCHEMA', '%s', true)", schema);
         log.debug("Getting all scripts using SQL: {}", sql);
@@ -251,79 +234,8 @@ public class ScriptRepo {
         }
     }
 
-    public List<Script> getStateScriptsInSchema(String schema) throws SQLException {
-        List<Script> scripts = new ArrayList<>();
-        for(ScriptObjectType type: ScriptObjectType.values()) {
-            if(!type.isMigration()) {
-                scripts.addAll(getScriptsInSchema(schema, type));
-            }
-        }
-        return scripts;
-    }
 
-    public List<Script> getScriptsInSchema(String schema, ScriptObjectType type) throws SQLException {
-        log.debug("Getting {} type scripts in schema: {}",type, schema);
-        String sql = "";
-        if(type == ScriptObjectType.FUNCTIONS || type == ScriptObjectType.PROCEDURES) {
-            sql = String.format("SELECT %s_NAME, ARGUMENT_SIGNATURE FROM INFORMATION_SCHEMA.%s WHERE %s_SCHEMA = '%s'",type.getEscapedSingular(), type, type.getEscapedSingular(), schema.toUpperCase());
-
-        }
-        else if(type == ScriptObjectType.STREAMS || type == ScriptObjectType.TASKS || type == ScriptObjectType.STAGES) {
-            return new ArrayList<>();
-        }
-        else if(type == ScriptObjectType.VIEWS) {
-            sql = String.format("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.VIEWS WHERE TABLE_SCHEMA = '%s'", schema.toUpperCase());
-        }
-        else if(type == ScriptObjectType.TABLES) {
-            sql = String.format("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE <> 'VIEW' AND TABLE_SCHEMA = '%s'", schema.toUpperCase());
-        }
-        else {
-            sql = String.format("SELECT %s_NAME FROM INFORMATION_SCHEMA.%s WHERE %s_SCHEMA = '%s'",type.getEscapedSingular(), type, type.getEscapedSingular(), schema.toUpperCase());
-        }
-
-        log.debug("Getting all scripts using SQL: {}", sql);
-        List<Script> scripts = new ArrayList<>();
-        ResultSet resultSet = connection.createStatement().executeQuery(sql);
-        while (resultSet.next()) {
-            String ddlSql = "";
-            String scriptObjectName = resultSet.getString(1);
-            if(type == ScriptObjectType.FUNCTIONS || type == ScriptObjectType.PROCEDURES) {
-                String arguments = resultSet.getString(2);
-                String regex = "(\\(|\\,\\s)\\w+";
-                arguments = arguments.replaceAll(regex, "$1");
-                ddlSql = String.format("SELECT GET_DDL('%s', '%s.%s%s', true);",type.getEscapedSingular(), schema.toUpperCase(), scriptObjectName.toUpperCase(), arguments);
-            }
-            else {
-                ddlSql = String.format("SELECT GET_DDL('%s', '%s.%s', true);",type.getEscapedSingular(), schema.toUpperCase(), scriptObjectName.toUpperCase());
-            }
-            log.debug("Get ddl script: {}", ddlSql);
-            ResultSet ddlResultSet = connection.createStatement().executeQuery(ddlSql);
-            ddlResultSet.next();
-            String content = ddlResultSet.getString(1);
-            if (content == null) {
-                log.warn("Unable to read Script definition for {}", scriptObjectName);
-                continue;
-            }
-            if(type.isMigration()) {
-//                String migrationHeader = "---version: 0, author: DlSync\n";
-//                String rollback = String.format("\n---rollback: DROP %s IF EXISTS %s;", type.getSingular(), getDatabaseName() + "." + schema + "." + scriptObjectName);
-//                String verify = String.format("\n---verify: SHOW %s LIKE %s;",type, getDatabaseName() + "." + schema + "." + scriptObjectName);
-//                content = migrationHeader + content + rollback + verify;
-//                Script script = ScriptFactory.getScript(getDatabaseName(), schema, type, scriptObjectName, content, 0L, null, null, null);
-                MigrationScript script = ScriptFactory.getMigrationScript(getDatabaseName(), schema, type, scriptObjectName, content);
-                scripts.add(script);
-            }
-            else {
-                Script script = ScriptFactory.getStateScript(getDatabaseName(), schema, type, scriptObjectName, content);
-                scripts.add(script);
-            }
-
-        }
-        return scripts;
-    }
-
-
-    public Script addConfig(Script script) throws SQLException {
+    public SchemaScript addConfig(SchemaScript script) throws SQLException {
         if(script.getObjectType() == ScriptObjectType.TABLES) {
             String additionalContent = String.format("SELECT * FROM %s", script.getFullObjectName());
             ResultSet resultSet = connection.createStatement().executeQuery(additionalContent);
@@ -363,44 +275,6 @@ public class ScriptRepo {
             script.setContent(newContent);
         }
         return script;
-    }
-
-//    public List<Script> getScriptsInSchemaWithArguments(String schema, ScriptObjectType type) throws SQLException {
-//        String sql = String.format("SELECT %s_NAME, ARGUMENT_SIGNATURE FROM INFORMATION_SCHEMA.%s WHERE %s_SCHEMA = '%s'",type.getSingular(), type, type.getSingular(), schema.toUpperCase());
-//        log.debug("Getting all scripts using SQL: {}", sql);
-//        List<Script> scripts = new ArrayList<>();
-//        ResultSet resultSet = connection.createStatement().executeQuery(sql);
-//        while (resultSet.next()) {
-//            String scriptObjectName = resultSet.getString(1);
-//            String arguments = resultSet.getString(2);
-//            String regex = "(\\(|\\,\\s)\\w+";
-//            arguments = arguments.replaceAll(regex, "$1");
-//            String ddlSql = String.format("SELECT GET_DDL('%s', '%s.%s%s', true);",type.getSingular(), schema.toUpperCase(), scriptObjectName.toUpperCase(), arguments);
-//            log.info("Get ddl script: {}", ddlSql);
-//            ResultSet ddlResultSet = connection.createStatement().executeQuery(ddlSql);
-//            ddlResultSet.next();
-//            String content = ddlResultSet.getString(1);
-//            if (content == null) {
-//                log.warn("Unable to read Script definition for {}", scriptObjectName);
-//                continue;
-//            }
-//            Script script = new Script(getDatabaseName(), schema, type, scriptObjectName, content);
-//            scripts.add(script);
-//        }
-//        return scripts;
-//    }
-
-    public List<Script> getAllScriptsInDatabase() throws SQLException {
-        log.info("Getting all scripts for database: {}", getDatabaseName());
-        List<String> schemas = getAllSchemasInDatabase(getDatabaseName());
-        List<Script> scripts = new ArrayList<>();
-        for(String schema: schemas) {
-//            for(ScriptObjectType scriptObjectType: ScriptObjectType.values()) {
-//                scripts.addAll(getScriptsInSchema(schema, scriptObjectType));
-//            }
-            scripts.addAll(getScriptsInSchema(schema, ScriptObjectType.VIEWS));
-        }
-        return scripts;
     }
 
     public List<String> getAllSchemasInDatabase(String database) throws SQLException {
@@ -465,7 +339,7 @@ public class ScriptRepo {
         connection.createStatement().executeUpdate(insertSql.toString());
     }
 
-    public List<MigrationScript> getMigrationScripts(Set<String> ids) throws SQLException {
+    public List<MigrationScript> getDeployedMigrationScripts(Set<String> ids) throws SQLException {
         if(ids.size() == 0) {
             return new ArrayList<>();
         }

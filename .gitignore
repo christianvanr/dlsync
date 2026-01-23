@@ -11,5 +11,8 @@ target/
 Jenkinsfile-app
 out/
 .vscode/
-Snowflake/
+/Snowflake/
 *.p8
+*.pem
+*.pub
+/created_scripts/
