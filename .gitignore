@@ -15,3 +15,4 @@ out/
 *.p8
 *.pem
 *.pub
+/created_scripts/

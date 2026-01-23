@@ -30,19 +30,24 @@ public class ScriptFactory {
         return new MigrationScript(schemaScript, content, version, author, rollback, verify);
     }
 
-    public static MigrationScript getSchemaMigrationScript(String fullObjectName, ScriptObjectType objectType, String content, Long version, String author, String rollback, String verify) {
-        String databaseName = null, schemaName = null, objectName = null;
-        String[] nameSplit = fullObjectName.split("\\.");
-        if(nameSplit.length > 2) {
-            databaseName = nameSplit[0];
-            schemaName = nameSplit[1];
-            objectName = nameSplit[2];
+    public static MigrationScript getMigrationScript(String fullObjectName, ScriptObjectType objectType, String content, Long version, String author, String rollback, String verify) {
+        if(objectType.getLevel() == ScriptObjectType.ObjectLevel.ACCOUNT) {
+            AccountScript accountScript = getAccountScript(null, objectType, fullObjectName, content);
+            return new MigrationScript(accountScript, content, version, author, rollback, verify);
         }
         else {
-            log.error("Error while splitting fullObjectName {}: Missing some values", fullObjectName);
-            throw new RuntimeException("Error while splitting fullObjectName");
+            String databaseName = null, schemaName = null, objectName = null;
+            String[] nameSplit = fullObjectName.split("\\.");
+            if (nameSplit.length > 2) {
+                databaseName = nameSplit[0];
+                schemaName = nameSplit[1];
+                objectName = nameSplit[2];
+            } else {
+                log.error("Error while splitting fullObjectName {}: Missing some values", fullObjectName);
+                throw new RuntimeException("Error while splitting fullObjectName");
+            }
+            return getSchemaMigrationScript(databaseName, schemaName, objectType, objectName, content, version, author, rollback, verify);
         }
-        return getSchemaMigrationScript(databaseName, schemaName, objectType, objectName, content, version, author, rollback, verify);
 
     }
 

@@ -25,31 +25,21 @@ public class ScriptRepo {
     public final String DEPENDENCY_LINEAGE_TABLE_NAME = "DL_SYNC_DEPENDENCY_LINEAGE";
 
 
-    public ScriptRepo(Properties connectionProperties) {
-        log.debug("Repo initialized with the following properties: {}", connectionProperties);
+    public ScriptRepo(Connection connection, Properties connectionProperties) {
+        this.connection = connection;
         this.connectionProperties = connectionProperties;
-        try {
-            openConnection();
-            ResultSet resultSet = connection.createStatement().executeQuery("select current_database(), current_schema();");
-            resultSet.next();
-            log.info("Using database [{}] and schema [{}] for dlsync activities.", resultSet.getString(1), resultSet.getString(2));
-            initScriptTables();
-        } catch (SQLException e) {
-            log.error("Error while initializing the script repo: {} cause {}", e.getMessage(), e.getCause());
-            throw new RuntimeException(e);
-        }
+        log.debug("Repo initialized with connection and properties");
     }
 
-
-    private void openConnection() throws SQLException {
-        String jdbcUrl = "jdbc:snowflake://" + connectionProperties.getProperty("account") + ".snowflakecomputing.com/";
-        connectionProperties.remove("account");
-        log.debug("Connection opened with properties: {}", connectionProperties);
-        connection = DriverManager.getConnection(jdbcUrl, connectionProperties);
+    public void init() throws SQLException {
+        initScriptTables();
     }
 
     private void initScriptTables() throws SQLException {
         ////varchar OBJECT_NAME, varchar SCRIPT_HASH, varchar created_by, timestamp created_ts, varchar updated_by, timestamp updated_ts;
+        ResultSet resultSet = connection.createStatement().executeQuery("select current_database(), current_schema();");
+        resultSet.next();
+        log.info("Using database [{}] and schema [{}] for dlsync activities.", resultSet.getString(1), resultSet.getString(2));
         log.debug("Checking for deployment tables");
         try {
             String query = "SELECT * FROM " + CHANGE_SYNC_TABLE_NAME + " LIMIT 1;";
@@ -374,7 +364,7 @@ public class ScriptRepo {
 
             String rollback = rs.getString("ROLLBACK_SCRIPT");
 
-            MigrationScript migrationScript = ScriptFactory.getSchemaMigrationScript(fullObjectName, objectType, "", version, null, rollback, null);
+            MigrationScript migrationScript = ScriptFactory.getMigrationScript(fullObjectName, objectType, "", version, null, rollback, null);
             migrations.add(migrationScript);
         }
         return migrations;
