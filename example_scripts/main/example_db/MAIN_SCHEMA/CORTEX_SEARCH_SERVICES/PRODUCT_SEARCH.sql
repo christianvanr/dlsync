@@ -1,12 +1,12 @@
 CREATE OR REPLACE CORTEX SEARCH SERVICE ${EXAMPLE_DB}.${MAIN_SCHEMA}.PRODUCT_SEARCH
-  ON product_description
-  ATTRIBUTES product_name, category
+  ON PRODUCT_NAME
+  ATTRIBUTES PRICE, STOCK
   WAREHOUSE = ${MY_WAREHOUSE}
   TARGET_LAG = '1 hour'
 AS (
   SELECT
-    product_name,
-    product_description,
-    category
+    PRODUCT_NAME,
+    PRICE,
+    STOCK
   FROM ${EXAMPLE_DB}.${MAIN_SCHEMA}.PRODUCTS
 );

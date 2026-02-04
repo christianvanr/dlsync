@@ -18,8 +18,8 @@ CREATE OR REPLACE AGENT ${EXAMPLE_DB}.${MAIN_SCHEMA}.SALES_ASSISTANT
     sample_questions:
       - question: "What products do we have in stock?"
         answer: "I'll search our product catalog to find available items."
-      - question: "What were our top selling products last month?"
-        answer: "I'll analyze our sales data to find the best performers."
+      - question: "How many orders were placed today?"
+        answer: "I'll analyze our sales data to find the order count."
 
   tools:
     - tool_spec:
@@ -29,7 +29,7 @@ CREATE OR REPLACE AGENT ${EXAMPLE_DB}.${MAIN_SCHEMA}.SALES_ASSISTANT
     - tool_spec:
         type: "cortex_search"
         name: "ProductSearch"
-        description: "Searches product catalog and documentation"
+        description: "Searches product catalog"
 
   tool_resources:
     SalesAnalyst:
