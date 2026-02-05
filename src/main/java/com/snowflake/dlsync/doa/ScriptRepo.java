@@ -42,17 +42,17 @@ public class ScriptRepo {
         log.info("Using database [{}] and schema [{}] for dlsync activities.", resultSet.getString(1), resultSet.getString(2));
         log.debug("Checking for deployment tables");
         try {
-            String query = "SELECT * FROM " + CHANGE_SYNC_TABLE_NAME + " LIMIT 1;";
+            String query = "SELECT * FROM " + getFullyQualifiedTableName(CHANGE_SYNC_TABLE_NAME) + " LIMIT 1;";
             Statement statement = connection.createStatement();
             statement.executeQuery(query);
             updateOldTableNames();
         } catch (SQLException e) {
             log.info("Running for the first time. Creating required tables.");
-            String createChangeSyncSql = "CREATE OR REPLACE TABLE " + CHANGE_SYNC_TABLE_NAME + " (ID integer PRIMARY KEY, CHANGE_TYPE varchar, STATUS varchar, LOG varchar, CHANGE_COUNT integer, START_TIME timestamp, END_TIME timestamp);";
+            String createChangeSyncSql = "CREATE OR REPLACE TABLE " + getFullyQualifiedTableName(CHANGE_SYNC_TABLE_NAME) + " (ID integer PRIMARY KEY, CHANGE_TYPE varchar, STATUS varchar, LOG varchar, CHANGE_COUNT integer, START_TIME timestamp, END_TIME timestamp);";
 
-            String createSqlHash = "CREATE OR REPLACE TABLE " + SCRIPT_HISTORY_TABLE_NAME + " (SCRIPT_ID VARCHAR, OBJECT_NAME varchar, OBJECT_TYPE varchar, ROLLBACK_SCRIPT varchar, SCRIPT_HASH varchar, DEPLOYED_HASH varchar, CHANGE_SYNC_ID integer, CREATED_BY varchar, CREATED_TS timestamp, UPDATED_BY varchar, UPDATED_TS timestamp, FOREIGN KEY (CHANGE_SYNC_ID) REFERENCES " + CHANGE_SYNC_TABLE_NAME + "(ID));";
+            String createSqlHash = "CREATE OR REPLACE TABLE " + getFullyQualifiedTableName(SCRIPT_HISTORY_TABLE_NAME) + " (SCRIPT_ID VARCHAR, OBJECT_NAME varchar, OBJECT_TYPE varchar, ROLLBACK_SCRIPT varchar, SCRIPT_HASH varchar, DEPLOYED_HASH varchar, CHANGE_SYNC_ID integer, CREATED_BY varchar, CREATED_TS timestamp, UPDATED_BY varchar, UPDATED_TS timestamp, FOREIGN KEY (CHANGE_SYNC_ID) REFERENCES " + getFullyQualifiedTableName(CHANGE_SYNC_TABLE_NAME) + "(ID));";
 
-            String createSqlEvent = "CREATE OR REPLACE TABLE " + SCRIPT_EVENT_TABLE_NAME + " (ID VARCHAR, SCRIPT_ID VARCHAR, OBJECT_NAME varchar, SCRIPT_HASH varchar, STATUS varchar, LOG varchar, CHANGE_SYNC_ID integer, CREATED_BY varchar, CREATED_TS timestamp, FOREIGN KEY (CHANGE_SYNC_ID) REFERENCES " + CHANGE_SYNC_TABLE_NAME + "(ID));";
+            String createSqlEvent = "CREATE OR REPLACE TABLE " + getFullyQualifiedTableName(SCRIPT_EVENT_TABLE_NAME) + " (ID VARCHAR, SCRIPT_ID VARCHAR, OBJECT_NAME varchar, SCRIPT_HASH varchar, STATUS varchar, LOG varchar, CHANGE_SYNC_ID integer, CREATED_BY varchar, CREATED_TS timestamp, FOREIGN KEY (CHANGE_SYNC_ID) REFERENCES " + getFullyQualifiedTableName(CHANGE_SYNC_TABLE_NAME) + "(ID));";
             log.debug("create hash table sql: {}", createSqlHash);
             log.debug("create event table sql: {}", createSqlEvent);
             Statement statement = connection.createStatement();
@@ -64,11 +64,12 @@ public class ScriptRepo {
 
     private void updateOldTableNames() {
         try {
-            String query = "SELECT * FROM DL_SYNC_SCRIPT LIMIT 1;";
+            String oldTableName = getFullyQualifiedTableName("DL_SYNC_SCRIPT");
+            String query = "SELECT * FROM " + oldTableName + " LIMIT 1;";
             Statement statement = connection.createStatement();
             statement.executeQuery(query);
             log.info("Found old dlsync table DL_SYNC_SCRIPT renaming it to [{}]", SCRIPT_HISTORY_TABLE_NAME);
-            String alterSql = "ALTER TABLE IF EXISTS DL_SYNC_SCRIPT RENAME TO " + SCRIPT_HISTORY_TABLE_NAME + ";";
+            String alterSql = "ALTER TABLE IF EXISTS " + oldTableName + " RENAME TO " + getFullyQualifiedTableName(SCRIPT_HISTORY_TABLE_NAME) + ";";
             statement.executeUpdate(alterSql);
         } catch (SQLException e) {
             log.debug("All tables are with new version");
@@ -76,7 +77,7 @@ public class ScriptRepo {
     }
 
     public Set<String> loadScriptHash() throws SQLException {
-        String hashQuery =  "SELECT * FROM " + SCRIPT_HISTORY_TABLE_NAME + ";";
+        String hashQuery =  "SELECT * FROM " + getFullyQualifiedTableName(SCRIPT_HISTORY_TABLE_NAME) + ";";
         log.debug("Loading hash with sql: {}", hashQuery);
         Statement statement = connection.createStatement();
         ResultSet resultSet = statement.executeQuery(hashQuery);
@@ -91,7 +92,7 @@ public class ScriptRepo {
 
     public Set<String> loadDeployedHash() throws SQLException {
         String hashColumn = "DEPLOYED_HASH";
-        String hashQuery =  "SELECT * FROM " + SCRIPT_HISTORY_TABLE_NAME + ";";
+        String hashQuery =  "SELECT * FROM " + getFullyQualifiedTableName(SCRIPT_HISTORY_TABLE_NAME) + ";";
         log.debug("Loading hash with sql: {}", hashQuery);
         Statement statement = connection.createStatement();
         ResultSet resultSet = statement.executeQuery(hashQuery);
@@ -105,13 +106,13 @@ public class ScriptRepo {
     }
 
     public Long insertChangeSync(ChangeType changeType, Status status, String logMessage) throws SQLException {
-        String queryGetId = "SELECT count(1) FROM " + CHANGE_SYNC_TABLE_NAME + ";";
+        String queryGetId = "SELECT count(1) FROM " + getFullyQualifiedTableName(CHANGE_SYNC_TABLE_NAME) + ";";
         ResultSet rs = connection.createStatement().executeQuery(queryGetId);
         if(rs.next()) {
             changeSyncId =  rs.getLong(1) + 1;
         }
 
-        String insertSql = "INSERT INTO " + CHANGE_SYNC_TABLE_NAME + " (ID, CHANGE_TYPE, STATUS, LOG, START_TIME) VALUES(?, ?, ?, ?, CURRENT_TIMESTAMP);";
+        String insertSql = "INSERT INTO " + getFullyQualifiedTableName(CHANGE_SYNC_TABLE_NAME) + " (ID, CHANGE_TYPE, STATUS, LOG, START_TIME) VALUES(?, ?, ?, ?, CURRENT_TIMESTAMP);";
         PreparedStatement statement = connection.prepareStatement(insertSql);
         statement.setLong(1, changeSyncId);
         statement.setString(2, changeType.toString());
@@ -124,7 +125,7 @@ public class ScriptRepo {
     }
 
     public void updateChangeSync(ChangeType changeType, Status status, String logMessage, Long changeCount) throws SQLException {
-        String updateSql = "UPDATE " + CHANGE_SYNC_TABLE_NAME + " SET CHANGE_TYPE=?, STATUS=?, LOG=?, CHANGE_COUNT=?, END_TIME=CURRENT_TIMESTAMP WHERE ID = ? ;";
+        String updateSql = "UPDATE " + getFullyQualifiedTableName(CHANGE_SYNC_TABLE_NAME) + " SET CHANGE_TYPE=?, STATUS=?, LOG=?, CHANGE_COUNT=?, END_TIME=CURRENT_TIMESTAMP WHERE ID = ? ;";
         PreparedStatement statement = connection.prepareStatement(updateSql);
         statement.setString(1, changeType.toString());
         statement.setString(2, status.toString());
@@ -144,7 +145,7 @@ public class ScriptRepo {
         String deployedHash = Util.getMd5Hash(script.getContent());
         log.debug("Updating script hash of object {}", script.getId());
         if(scriptHash.containsKey(script.getId())) {
-            String updateSql = "UPDATE " + SCRIPT_HISTORY_TABLE_NAME + " SET ROLLBACK_SCRIPT=?, SCRIPT_HASH=?, DEPLOYED_HASH=?, CHANGE_SYNC_ID=?, updated_by=current_user, updated_ts=current_timestamp WHERE SCRIPT_ID=?;";
+            String updateSql = "UPDATE " + getFullyQualifiedTableName(SCRIPT_HISTORY_TABLE_NAME) + " SET ROLLBACK_SCRIPT=?, SCRIPT_HASH=?, DEPLOYED_HASH=?, CHANGE_SYNC_ID=?, updated_by=current_user, updated_ts=current_timestamp WHERE SCRIPT_ID=?;";
             statement = connection.prepareStatement(updateSql);
             statement.setString(1, rollback);
             statement.setString(2, script.getHash());
@@ -154,7 +155,7 @@ public class ScriptRepo {
             log.debug("Updating script hash with the following SQL: {}", updateSql);
         }
         else {
-            String insertSql = "INSERT INTO " + SCRIPT_HISTORY_TABLE_NAME + " VALUES(?, ?, ?, ?, ?, ?, ?, current_user, current_timestamp, current_user, current_timestamp);";
+            String insertSql = "INSERT INTO " + getFullyQualifiedTableName(SCRIPT_HISTORY_TABLE_NAME) + " VALUES(?, ?, ?, ?, ?, ?, ?, current_user, current_timestamp, current_user, current_timestamp);";
             statement = connection.prepareStatement(insertSql);
             statement.setString(1, script.getId());
             statement.setString(2, script.getFullObjectName());
@@ -172,7 +173,7 @@ public class ScriptRepo {
     private boolean insertScriptEvent(Script script, String status, String logs) throws SQLException {
         //varchar ID, varchar OBJECT_NAME, varchar SCRIPT_HASH, varchar STATUS, varchar log, varchar created_by, varchar created_ts;
         log.debug("Creating event for the object {} with status: {} and log: {} ", script.getObjectName(), status, logs);
-        String insertSql = "INSERT INTO " + SCRIPT_EVENT_TABLE_NAME + " SELECT UUID_STRING(), ?, ?, ?, ?, ?, ?, current_user, current_timestamp;";
+        String insertSql = "INSERT INTO " + getFullyQualifiedTableName(SCRIPT_EVENT_TABLE_NAME) + " SELECT UUID_STRING(), ?, ?, ?, ?, ?, ?, current_user, current_timestamp;";
         PreparedStatement statement = connection.prepareStatement(insertSql);
         statement.setString(1, script.getId());
         statement.setObject(2, script.getFullObjectName());
@@ -301,14 +302,18 @@ public class ScriptRepo {
         return connectionProperties.getProperty("schema");
     }
 
+    private String getFullyQualifiedTableName(String tableName) {
+        return String.format("%s.%s.%s", getDatabaseName(), getSchemaName(), tableName);
+    }
+
     public ResultSet executeQuery(String query) throws SQLException {
         return connection.createStatement().executeQuery(query);
     }
 
     public void insertDependencyList(List<ScriptDependency> dependencyList) throws SQLException {
-        String createTable = "CREATE TABLE IF NOT EXISTS " + DEPENDENCY_LINEAGE_TABLE_NAME + "(OBJECT_NAME VARCHAR, OBJECT_TYPE VARCHAR, DEPENDENCY VARCHAR, DEPENDECY_OBEJECT_TYPE VARCHAR, CHANGE_SYNC_ID VARCHAR, CREATED_BY VARCHAR, CREATED_TS TIMESTAMP);";
+        String createTable = "CREATE TABLE IF NOT EXISTS " + getFullyQualifiedTableName(DEPENDENCY_LINEAGE_TABLE_NAME) + "(OBJECT_NAME VARCHAR, OBJECT_TYPE VARCHAR, DEPENDENCY VARCHAR, DEPENDECY_OBEJECT_TYPE VARCHAR, CHANGE_SYNC_ID VARCHAR, CREATED_BY VARCHAR, CREATED_TS TIMESTAMP);";
         connection.createStatement().executeUpdate(createTable);
-        StringBuilder insertSql = new StringBuilder("INSERT INTO " + DEPENDENCY_LINEAGE_TABLE_NAME + " VALUES ");
+        StringBuilder insertSql = new StringBuilder("INSERT INTO " + getFullyQualifiedTableName(DEPENDENCY_LINEAGE_TABLE_NAME) + " VALUES ");
 
         for(ScriptDependency dependency: dependencyList) {
             String values = String.format("('%s', '%s', '%s', '%s', '%s', current_user, current_timestamp),", dependency.getObjectName(), dependency.getObjectType(), dependency.getDependency(), dependency.getDependencyObjectType(), changeSyncId);
@@ -321,9 +326,10 @@ public class ScriptRepo {
 
     public void insertSortedScript(List<Script> sequencedScript) throws SQLException {
         DependencyExtractor dependencyExtractor = new DependencyExtractor();
-        String createTable = "CREATE OR REPLACE TABLE DL_SYNC_TOPOLOGICAL_SORTED(id INT, script VARCHAR, dependency_size INT, dependencies VARCHAR);";
+        String topologicalSortedTable = getFullyQualifiedTableName("DL_SYNC_TOPOLOGICAL_SORTED");
+        String createTable = "CREATE OR REPLACE TABLE " + topologicalSortedTable + "(id INT, script VARCHAR, dependency_size INT, dependencies VARCHAR);";
         connection.createStatement().executeUpdate(createTable);
-        StringBuilder insertSql = new StringBuilder("INSERT INTO DL_SYNC_TOPOLOGICAL_SORTED VALUES ");
+        StringBuilder insertSql = new StringBuilder("INSERT INTO " + topologicalSortedTable + " VALUES ");
 
         for(int i = 0; i < sequencedScript.size(); i++) {
             Script script = sequencedScript.get(i);
@@ -344,7 +350,7 @@ public class ScriptRepo {
             return new ArrayList<>();
         }
         String allIdJoined = ids.stream().map(v -> "'" + v + "'").collect(Collectors.joining(",", "(", ");"));
-        String query = "SELECT * FROM " + SCRIPT_HISTORY_TABLE_NAME + " where SCRIPT_ID in " + allIdJoined;
+        String query = "SELECT * FROM " + getFullyQualifiedTableName(SCRIPT_HISTORY_TABLE_NAME) + " where SCRIPT_ID in " + allIdJoined;
         PreparedStatement statement = connection.prepareStatement(query);
         ResultSet rs = statement.executeQuery();
         List<MigrationScript> migrations = new ArrayList<>();
@@ -422,7 +428,7 @@ public class ScriptRepo {
     }
 
     private void deleteScriptHash(MigrationScript migration) throws SQLException {
-        String deleteSql = "DELETE FROM " + SCRIPT_HISTORY_TABLE_NAME + " WHERE SCRIPT_ID=?;";
+        String deleteSql = "DELETE FROM " + getFullyQualifiedTableName(SCRIPT_HISTORY_TABLE_NAME) + " WHERE SCRIPT_ID=?;";
         PreparedStatement statement = connection.prepareStatement(deleteSql);
         statement.setString(1, migration.getId());
         statement.executeUpdate();

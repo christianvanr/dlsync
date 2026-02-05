@@ -1,6 +1,9 @@
 # DLSync Changelog
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [3.0.1] - 2026-02-05
+### Fixed
+- Fixed session context issue when managing account-level objects (databases, schemas). DLSync metadata tables now use fully qualified names to prevent "table does not exist" errors after Snowflake automatically switches session context.
 ## [3.0.0] - 2026-01-15
 ### Added
 - Added support for account level objects like database, schemas, roles, warehouses etc.
