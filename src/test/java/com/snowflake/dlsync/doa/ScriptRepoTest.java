@@ -178,7 +178,6 @@ class ScriptRepoTest {
         props.setProperty("account", "test_account");
         return new ScriptRepo(mockConnection, props);
     }
-
 }
 
 
