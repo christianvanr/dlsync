@@ -450,7 +450,7 @@ The role must have privileges to create and manage DLSync tracking tables in the
 > **Note:** the database and schema specified in the connection will be used to store the DLSync tracking tables.
 
 ### Database-Level Objects
-For managing database-level objects (VIEWS, FUNCTIONS, PROCEDURES, TABLES, SEQUENCES, STAGES, STREAMS, TASKS, ALERTS, DYNAMIC_TABLES, FILE_FORMATS, PIPES, MASKING_POLICIES), the role must have:
+For managing database-level objects (VIEWS, FUNCTIONS, PROCEDURES, TABLES, SEQUENCES, STAGES, STREAMS, TASKS, ALERTS, DYNAMIC_TABLES, FILE_FORMATS, PIPES, MASKING_POLICIES, SESSION_POLICIES, PASSWORD_POLICIES, AUTHENTICATION_POLICIES), the role must have:
 - **USAGE** on the target schema
 - **CREATE** privileges for the specific object types being deployed (CREATE VIEW, CREATE FUNCTION, CREATE TABLE, etc.)
 - **ALTER** privileges on existing objects in the schema
@@ -465,9 +465,8 @@ For managing account-level objects, the role must have:
 - **CREATE INTEGRATION** (for SECURITY_INTEGRATIONS, STORAGE_INTEGRATIONS, NOTIFICATION_INTEGRATIONS, API_INTEGRATIONS)
 - **CREATE RESOURCE MONITOR** (for RESOURCE_MONITORS)
 - **CREATE NETWORK POLICY** (for NETWORK_POLICIES)
-- **CREATE SESSION POLICY** (for SESSION_POLICIES)
-- **CREATE PASSWORD POLICY** (for PASSWORD_POLICIES)
-- **CREATE AUTHENTICATION POLICY** (for AUTHENTICATION_POLICIES)
+
+> **Note:** SESSION_POLICIES, PASSWORD_POLICIES, and AUTHENTICATION_POLICIES are schema-level objects (created within a schema) but can be applied to accounts or users via `ALTER ACCOUNT SET` or `ALTER USER SET`.
 
 ## DLSync Metadata Tables
 DLSync stores script metadata, deployment history, and logs in the database.
