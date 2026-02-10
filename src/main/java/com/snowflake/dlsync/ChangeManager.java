@@ -98,6 +98,7 @@ public class ChangeManager {
                 .stream()
                 .filter(script -> !config.isScriptExcluded(script))
                 .filter(script -> !script.getObjectType().isMigration())
+                .filter(script ->  scriptRepo.isScriptPreviouslyDeployed(script))
                 .filter(script -> scriptRepo.isScriptChanged(script))
                 .collect(Collectors.toList());
         dependencyGraph.addNodes(changedScripts);

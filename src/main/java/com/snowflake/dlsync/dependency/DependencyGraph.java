@@ -108,12 +108,14 @@ public class DependencyGraph {
                 .filter(dependencyOverride -> dependencyOverride.getScript().equals(script.getFullObjectName()))
                 .flatMap(dependencyOverride -> dependencyOverride.getDependencies().stream())
                 .map(dependencyName -> findScriptByName(nodes, dependencyName))
+                .filter(Optional::isPresent)
+                .map(Optional::get)
                 .collect(Collectors.toList());
 
         return scriptsDependencyOverrides;
     }
 
-    private Script findScriptByName(List<? extends Script> allScripts, String fullObjectName) {
-        return allScripts.parallelStream().filter(script -> script.getFullObjectName().equals(fullObjectName)).findFirst().get();
+    private Optional<? extends Script> findScriptByName(List<? extends Script> allScripts, String fullObjectName) {
+        return allScripts.parallelStream().filter(script -> script.getFullObjectName().equals(fullObjectName)).findFirst();
     }
 }

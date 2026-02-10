@@ -1,6 +1,17 @@
 # DLSync Changelog
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [3.1.0] - 2026-02-10
+### Added
+- Added support for AGENTS object type
+- Added support for SEMANTIC_VIEWS object type
+- Added support for CORTEX_SEARCH_SERVICES object type
+- Added support for NOTEBOOKS object type
+### Fixed
+- Fixed rollback for undeployed declarative scripts
+- Moved SESSION_POLICIES, PASSWORD_POLICIES and AUTHENTICATION_POLICIES from account-level to schema-level objects
+- Fixed dependency override failure for unknown scripts not in the current changed scripts
+
 ## [3.0.1] - 2026-02-05
 ### Fixed
 - Fixed session context issue when managing account-level objects (databases, schemas). DLSync metadata tables now use fully qualified names to prevent "table does not exist" errors after Snowflake automatically switches session context.
