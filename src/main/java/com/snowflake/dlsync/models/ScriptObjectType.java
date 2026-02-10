@@ -22,6 +22,7 @@ public enum ScriptObjectType {
     SECURITY_INTEGRATIONS("SECURITY INTEGRATION", ObjectLevel.ACCOUNT, false),
     STORAGE_INTEGRATIONS("STORAGE INTEGRATION", ObjectLevel.ACCOUNT, false),
     WAREHOUSES("WAREHOUSE", ObjectLevel.ACCOUNT, false),
+    NOTEBOOKS("NOTEBOOK", ObjectLevel.SCHEMA, false),
 
     // Migration-enabled objects
     TABLES("TABLE", ObjectLevel.SCHEMA, true),

@@ -1,6 +1,10 @@
 # DLSync Changelog
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [3.1.0] - 2026-02-09
+### Added
+- Added support for Snowflake Notebook object type
+
 ## [3.0.1] - 2026-02-05
 ### Fixed
 - Fixed session context issue when managing account-level objects (databases, schemas). DLSync metadata tables now use fully qualified names to prevent "table does not exist" errors after Snowflake automatically switches session context.

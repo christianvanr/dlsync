@@ -1,0 +1,5 @@
+CREATE OR REPLACE NOTEBOOK ${EXAMPLE_DB}.${MAIN_SCHEMA}.SALES_ANALYSIS_NOTEBOOK
+    MAIN_FILE='sales_analysis.ipynb'
+    QUERY_WAREHOUSE='${MY_WAREHOUSE}'
+    COMMENT = 'Example notebook deployed via DLSync'
+;
