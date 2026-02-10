@@ -16,3 +16,4 @@ out/
 *.pem
 *.pub
 /created_scripts/
+/local/

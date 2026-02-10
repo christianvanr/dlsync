@@ -185,6 +185,10 @@ public class ScriptRepo {
         return statement.executeUpdate() > 0;
     }
 
+    public boolean isScriptPreviouslyDeployed(Script script) {
+        return scriptHash.containsKey(script.getId());
+    }
+
     public boolean isScriptChanged(Script script) {
 //        return true;
         return !scriptHash.getOrDefault(script.getId(), "null").equals(script.getHash());
