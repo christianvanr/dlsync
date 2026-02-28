@@ -23,7 +23,7 @@ public enum ScriptObjectType {
     STORAGE_INTEGRATIONS("STORAGE INTEGRATION", ObjectLevel.ACCOUNT, false),
     WAREHOUSES("WAREHOUSE", ObjectLevel.ACCOUNT, false),
     NOTEBOOKS("NOTEBOOK", ObjectLevel.SCHEMA, false),
-    TAG("TAG", ObjectLevel.SCHEMA, false),
+    TAGS("TAG", ObjectLevel.SCHEMA, false),
 
     // Migration-enabled objects
     TABLES("TABLE", ObjectLevel.SCHEMA, true),
